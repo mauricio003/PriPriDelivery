@@ -204,7 +204,7 @@ function Home() {
 
   const fazerLogout = async () => {
     await logout();
-    navegacao('/', { replace: true });
+    navegacao('/login', { replace: true });
   };
 
   const irParaComprar = (restauranteId) => {

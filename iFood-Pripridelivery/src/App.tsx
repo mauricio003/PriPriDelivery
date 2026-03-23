@@ -32,6 +32,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Cadastro />} />
+          <Route path="/cadastro" element={<Cadastro />} />
           <Route path="/login" element={<PaginaLogin />} />
           <Route
             path="/home"

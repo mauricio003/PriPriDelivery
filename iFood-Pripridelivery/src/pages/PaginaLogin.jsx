@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   GoogleAuthProvider,
   FacebookAuthProvider,
@@ -297,8 +297,7 @@ function PaginaLogin() {
                       />
                     </div>
                     <p className="mt-2 text-xs text-gray-500">
-                      No Firebase, o login por e-mail é feito por link enviado ao seu e-mail.
-                    </p>
+                                         </p>
                   </div>
                 ) : (
                   <div>
@@ -384,6 +383,15 @@ function PaginaLogin() {
               </form>
             )}
           </div>
+          <p className="text-center mt-4 text-sm text-gray-600">
+  Você não tem cadastro?{" "}
+  <Link
+    to="/cadastro"
+    className="text-ifood-red font-semibold hover:underline"
+  >
+    Faça agora mesmo!
+  </Link>
+</p>
         </div>
       </div>
 
