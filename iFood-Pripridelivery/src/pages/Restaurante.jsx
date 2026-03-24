@@ -50,33 +50,36 @@ function Restaurante() {
     }
   }, [estaAutenticado, navegacao]);
 
-  const carregarRestaurantes = async () => {
-    try {
-      if (!user?.uid) {
-        setCarregando(false);
-        return;
-      }
+const carregarRestaurantes = async () => {
+  try {
+    setErro('');
+    setCarregando(true);
 
-      const q = query(
-        collection(db, 'restaurantes'),
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      );
+    const q = query(
+      collection(db, 'restaurantes'),
+      where('userId', '==', user.uid)
+    );
 
-      const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q);
 
-      const lista = snapshot.docs.map((item) => ({
+    const lista = snapshot.docs
+      .map((item) => ({
         id: item.id,
-        ...item.data()
-      }));
+        ...item.data(),
+      }))
+      .sort((a, b) => {
+        const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dbb = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dbb - da;
+      });
 
-      setRestaurantes(lista);
-    } catch (erro) {
-      console.error('Erro ao carregar restaurantes:', erro);
-      setErro('Não foi possível carregar os restaurantes');
-    } finally {
-      setCarregando(false);
-    }
+    setRestaurantes(lista);
+  } catch (erro) {
+    console.error('Erro ao carregar restaurantes:', erro);
+    setErro('Não foi possível carregar os restaurantes');
+  } finally {
+    setCarregando(false);
+  }
   };
 
   useEffect(() => {
@@ -171,7 +174,7 @@ function Restaurante() {
   };
 
   const irParaProdutos = (restauranteId) => {
-    navegacao('/restaurante/${restauranteId}/produtos');
+    navegacao(`/restaurante/${restauranteId}/produtos`);
   };
 
   const fazerLogout = async () => {

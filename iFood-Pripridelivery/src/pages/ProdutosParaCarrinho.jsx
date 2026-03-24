@@ -10,7 +10,6 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  orderBy
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -187,55 +186,73 @@ function ProdutosParaCarrinho() {
     }
   };
 
-  const carregarRestaurante = async () => {
-    try {
-      const restauranteRef = doc(db, 'restaurantes', restauranteId);
-      const restauranteSnap = await getDoc(restauranteRef);
+const carregarRestaurante = async () => {
+  try {
+    console.log('🔥 restauranteId recebido:', restauranteId)
 
-      if (!restauranteSnap.exists()) {
-        throw new Error('Restaurante não encontrado');
-      }
+    const restauranteRef = doc(db, 'restaurantes', restauranteId);
 
-      setRestaurante({
-        id: restauranteSnap.id,
-        ...restauranteSnap.data()
-      });
-    } catch (erro) {
-      console.error('Erro ao carregar restaurante:', erro);
-      setErro('Não foi possível carregar as informações do restaurante');
+    console.log('🔍 buscando restaurante com ID:', restauranteId);
+
+    const restauranteSnap = await getDoc(restauranteRef);
+
+    if (!restauranteSnap.exists()) {
+      throw new Error('Restaurante não encontrado');
     }
-  };
+
+    setRestaurante({
+      id: restauranteSnap.id,
+      ...restauranteSnap.data()
+    });
+  } catch (erro) {
+    console.error('Erro ao carregar restaurante:', erro);
+
+    console.error('🚨 ID que deu erro:', restauranteId);
+
+    setErro('Não foi possível carregar as informações do restaurante');
+  }
+};
 
   const carregarProdutos = async () => {
-    try {
-      const q = query(
-        collection(db, 'produtos'),
-        where('restaurante_id', '==', restauranteId),
-        where('disponivel', '==', true),
-        orderBy('categoria', 'asc')
-      );
+  try {
+    setErro(null);
+    setCarregando(true);
 
-      const snapshot = await getDocs(q);
+    const q = query(
+      collection(db, 'produtos'),
+      where('restaurante_id', '==', restauranteId)
+    );
 
-      const lista = snapshot.docs.map((item) => ({
+    const snapshot = await getDocs(q);
+
+    const lista = snapshot.docs
+      .map((item) => ({
         id: item.id,
-        ...item.data()
-      }));
-
-      setProdutos(lista);
-
-      const quantidadesIniciais = {};
-      lista.forEach((produto) => {
-        quantidadesIniciais[produto.id] = 1;
+        ...item.data(),
+      }))
+      .filter((p) => p.disponivel !== false)
+      .sort((a, b) => {
+        const da = a.created_at?.toDate ? a.created_at.toDate() : new Date(a.created_at || 0);
+        const db = b.created_at?.toDate ? b.created_at.toDate() : new Date(b.created_at || 0);
+        return db - da;
       });
-      setQuantidades(quantidadesIniciais);
-    } catch (erro) {
-      console.error('Erro ao carregar produtos:', erro);
-      setErro('Não foi possível carregar os produtos');
-    } finally {
-      setCarregando(false);
-    }
-  };
+
+    setProdutos(lista);
+
+    const quantidadesIniciais = {};
+    lista.forEach((produto) => {
+      quantidadesIniciais[produto.id] = 1;
+    });
+
+    setQuantidades(quantidadesIniciais);
+
+  } catch (erro) {
+    console.error('Erro ao carregar produtos:', erro);
+    setErro('Não foi possível carregar os produtos');
+  } finally {
+    setCarregando(false);
+  }
+};
 
   const ajustarQuantidade = (produtoId, delta) => {
     setQuantidades((prev) => ({

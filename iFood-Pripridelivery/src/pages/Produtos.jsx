@@ -10,7 +10,6 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  orderBy
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -55,28 +54,34 @@ function Produtos() {
     }
   };
 
-  const carregarProdutos = async () => {
-    try {
-      const q = query(
-        collection(db, 'produtos'),
-        where('restaurante_id', '==', restauranteId),
-        orderBy('created_at', 'desc')
-      );
+const carregarProdutos = async () => {
+  try {
+    const q = query(
+      collection(db, 'produtos'),
+      where('restaurante_id', '==', restauranteId)
+    );
 
-      const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q);
 
-      const lista = snapshot.docs.map((item) => ({
+    const lista = snapshot.docs
+      .map((item) => ({
         id: item.id,
         ...item.data()
-      }));
+      }))
+      .sort((a, b) => {
+        const da = a.created_at?.toDate ? a.created_at.toDate() : new Date(a.created_at || 0);
+        const db = b.created_at?.toDate ? b.created_at.toDate() : new Date(b.created_at || 0);
+        return db - da;
+      });
 
-      setProdutos(lista);
-    } catch (erro) {
-      console.error('Erro ao carregar produtos:', erro);
-      setErro('Não foi possível carregar os produtos');
-    } finally {
-      setCarregando(false);
-    }
+    setProdutos(lista);
+
+  } catch (erro) {
+    console.error('Erro ao carregar produtos:', erro);
+    setErro('Não foi possível carregar os produtos');
+  } finally {
+    setCarregando(false);
+  }
   };
 
   useEffect(() => {
@@ -87,7 +92,7 @@ function Produtos() {
   }, [estaAutenticado, restauranteId]);
 
   const podeEditarProdutos = () => {
-    return restaurante?.user_id === user?.uid;
+    return restaurante?.userId === user?.uid;
   };
 
   const adicionarAoCarrinho = async (produto) => {

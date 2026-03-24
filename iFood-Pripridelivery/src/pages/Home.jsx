@@ -208,7 +208,7 @@ function Home() {
   };
 
   const irParaComprar = (restauranteId) => {
-    navegacao('/restaurante/${restauranteId}/comprar');
+  navegacao(`/restaurante/${restauranteId}/comprar`);
   };
 
   return (
