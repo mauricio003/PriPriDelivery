@@ -24,6 +24,12 @@ function Produtos() {
   const [restaurante, setRestaurante] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
+  const [busca, setBusca] = useState('');
+
+  const produtosFiltrados = produtos.filter((produto) =>
+  produto.nome.toLowerCase().includes(busca.toLowerCase())
+);
+
   const [modalAberto, setModalAberto] = useState(false);
   const [produtoAtual, setProdutoAtual] = useState({
     id: null,
@@ -252,6 +258,16 @@ const carregarProdutos = async () => {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Produtos</h2>
 
+            <div className="mt-4 mb-4">
+        <input
+          type="text"
+          placeholder="Buscar produto..."
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-ifood-red focus:border-ifood-red"
+        />
+      </div>
+
             {podeEditarProdutos() && (
               <button
                 onClick={() => {
@@ -288,7 +304,7 @@ const carregarProdutos = async () => {
             </div>
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {produtos.map((produto) => (
+              {produtosFiltrados.map((produto) => (
                 <div
                   key={produto.id}
                   className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"

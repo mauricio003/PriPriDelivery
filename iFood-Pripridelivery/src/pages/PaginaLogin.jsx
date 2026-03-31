@@ -60,15 +60,6 @@ function PaginaLogin() {
     }
   }, [navegacao]);
 
-  useEffect(() => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {}
-      });
-    }
-  }, []);
-
   const traduzirErroFirebase = (error) => {
     switch (error?.code) {
       case 'auth/invalid-phone-number':
@@ -101,6 +92,26 @@ function PaginaLogin() {
     return apenasNumeros.startsWith('55') ? `+${apenasNumeros}` : `+55${apenasNumeros}`;
   };
 
+  const criarRecaptcha = async () => {
+    if (window.recaptchaVerifier) {
+      try {
+        window.recaptchaVerifier.clear();
+      } catch (e) {}
+      window.recaptchaVerifier = null;
+    }
+
+    window.recaptchaVerifier = new RecaptchaVerifier(
+      auth,
+      'recaptcha-container',
+      {
+        size: 'invisible',
+        callback: () => {}
+      }
+    );
+
+    await window.recaptchaVerifier.render();
+  };
+
   const enviarCodigo = async (e) => {
     e.preventDefault();
     setErro(null);
@@ -125,15 +136,34 @@ function PaginaLogin() {
         window.localStorage.setItem('emailParaLogin', email);
 
         alert('Link de login enviado para seu e-mail.');
-      } else {
-        const appVerifier = window.recaptchaVerifier;
-        const numeroFormatado = formatarTelefoneFirebase(telefone);
+    } else {
+      const telefoneLimpo = telefone.replace(/\D/g, '');
 
+      if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
+        setErro('Digite um telefone válido com DDD.');
+        setCarregando(false);
+        return;
+      }
+
+      await criarRecaptcha();
+
+      const appVerifier = window.recaptchaVerifier;
+      const numeroFormatado = formatarTelefoneFirebase(telefone);
+
+      try {
         const result = await signInWithPhoneNumber(auth, numeroFormatado, appVerifier);
         setConfirmationResult(result);
         setMostrarCodigo(true);
         alert('Código de verificação enviado para seu telefone.');
+      } catch (erroTelefone) {
+        try {
+          const widgetId = await window.recaptchaVerifier.render();
+          window.grecaptcha?.reset(widgetId);
+        } catch (e) {}
+
+        throw erroTelefone;
       }
+    }
 
       setUltimoEnvio(Date.now());
     } catch (erro) {

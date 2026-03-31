@@ -49,9 +49,7 @@ function Endereco() {
     try {
       const q = query(
         collection(db, 'enderecos'),
-        where('user_id', '==', user.uid),
-        orderBy('principal', 'desc'),
-        orderBy('created_at', 'desc')
+        where('user_id', '==', user.uid)
       );
 
       const querySnapshot = await getDocs(q);

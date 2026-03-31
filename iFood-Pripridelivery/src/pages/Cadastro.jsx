@@ -9,6 +9,7 @@ function Cadastro() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [cpf, setCpf] = useState('');
+  const [telefone, setTelefone] = useState(''); 
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [erro, setErro] = useState(null);
@@ -21,9 +22,14 @@ function Cadastro() {
 
     try {
       const cpfLimpo = cpf.replace(/\D/g, '');
+      const telefoneLimpo = telefone.replace(/\D/g, '');
 
       if (cpfLimpo.length !== 11) {
         throw new Error('CPF inválido. Digite os 11 números do CPF.');
+      }
+      
+      if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
+        throw new Error('Telefone inválido. Digite DDD + número.');
       }
 
       if (senha.length < 6) {
@@ -58,6 +64,7 @@ function Cadastro() {
         nome,
         email,
         cpf: cpfLimpo,
+        telefone: telefoneLimpo,
         created_at: new Date()
       });
 
@@ -159,6 +166,25 @@ function Cadastro() {
                 />
               </div>
             </div>
+
+          <div>
+            <label htmlFor="telefone" className="block text-sm font-medium text-gray-700">
+              Telefone
+            </label>
+            <div className="mt-1">
+              <input
+                id="telefone"
+                name="telefone"
+                type="text"
+                required
+                value={telefone}
+                onChange={(e) => setTelefone(e.target.value.replace(/\D/g, ''))}
+                maxLength={11}
+                placeholder="11999999999"
+                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-ifood-red focus:border-ifood-red sm:text-sm"
+              />
+            </div>
+          </div>
 
             <div>
               <label htmlFor="senha" className="block text-sm font-medium text-gray-700">
