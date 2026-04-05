@@ -25,15 +25,28 @@ function Home() {
   const [carrinhoAberto, setCarrinhoAberto] = useState(false);
   const [itensCarrinho, setItensCarrinho] = useState([]);
   const [totalCarrinho, setTotalCarrinho] = useState(0);
+  const [categorias, setCategorias] = useState([]);
 
-  const categorias = [
-    'Todos',
-    'Italiana',
-    'Japonesa',
-    'Brasileira',
-    'Mexicana',
-    'Vegetariana'
-  ];
+  async function carregarCategorias() {
+  try {
+    const snapshot = await getDocs(collection(db, "restaurantes"));
+
+    const lista = snapshot.docs.map((doc) => doc.data().categoria);
+
+    // Remove duplicados
+    const categoriasUnicas = [...new Set(lista)];
+
+    setCategorias(categoriasUnicas);
+  } catch (error) {
+    console.error("Erro ao carregar categorias:", error);
+  }
+}
+
+useEffect(() => {
+  carregarCategorias();
+}, []);
+
+
 
   useEffect(() => {
     carregarRestaurantes();
@@ -272,7 +285,7 @@ function Home() {
           </div>
 
           <div className="mt-4 flex space-x-4 overflow-x-auto pb-2">
-            {categorias.map((categoria) => (
+            {["Todos", ...categorias].map((categoria) => (
               <button
                 key={categoria}
                 onClick={() => setCategoriaAtiva(categoria)}

@@ -78,7 +78,7 @@ const carregarRestaurantes = async () => {
     console.error('Erro ao carregar restaurantes:', erro);
     setErro('Não foi possível carregar os restaurantes');
   } finally {
-    setCarregando(false);
+    setCarregando(false); 
   }
   };
 
@@ -444,15 +444,17 @@ const carregarRestaurantes = async () => {
                   <select
                     value={restauranteAtual.categoria}
                     onChange={(e) =>
-                      setRestauranteAtual({
-                        ...restauranteAtual,
-                        categoria: e.target.value
-                      })
+                      setRestauranteAtual({ ...restauranteAtual, categoria: e.target.value })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
-                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                   >
                     <option value="">Selecione uma categoria</option>
+
+                    <option value="Lanche">Lanche</option>
+                    <option value="Pizza">Pizza</option>
+                    <option value="Doces e Bolos">Doces e Bolos</option>
+                    <option value="Árabe">Árabe</option>
+
                     <option value="Brasileira">Brasileira</option>
                     <option value="Italiana">Italiana</option>
                     <option value="Japonesa">Japonesa</option>
