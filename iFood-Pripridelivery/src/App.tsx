@@ -12,7 +12,7 @@ import Home from './pages/Home';
 import { ProvedorAutenticacao } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 
-function RotaProtegida({ children }: { children: React.ReactNode }) {
+function RotaProtegida({ children }) {
   const { estaAutenticado, carregando } = useAuth();
 
   if (carregando) {
@@ -29,7 +29,12 @@ function RotaProtegida({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <ProvedorAutenticacao>
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <Routes>
           <Route path="/" element={<Cadastro />} />
           <Route path="/cadastro" element={<Cadastro />} />

@@ -60,6 +60,17 @@ function PaginaLogin() {
     }
   }, [navegacao]);
 
+  useEffect(() => {
+    return () => {
+      if (window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (e) {}
+        window.recaptchaVerifier = null;
+      }
+    };
+  }, []);
+
   const traduzirErroFirebase = (error) => {
     switch (error?.code) {
       case 'auth/invalid-phone-number':
@@ -68,6 +79,8 @@ function PaginaLogin() {
         return 'Código inválido. Por favor, tente novamente.';
       case 'auth/missing-verification-code':
         return 'Informe o código de verificação.';
+      case 'auth/code-expired':
+        return 'O código expirou. Solicite um novo código.';
       case 'auth/too-many-requests':
         return 'Muitas tentativas. Tente novamente mais tarde.';
       case 'auth/popup-closed-by-user':
@@ -89,7 +102,19 @@ function PaginaLogin() {
 
   const formatarTelefoneFirebase = (telefone) => {
     const apenasNumeros = telefone.replace(/\D/g, '');
-    return apenasNumeros.startsWith('55') ? `+${apenasNumeros}` : `+55${apenasNumeros}`;
+
+    if (apenasNumeros.length === 10 || apenasNumeros.length === 11) {
+      return `+55${apenasNumeros}`;
+    }
+
+    if (
+      apenasNumeros.startsWith('55') &&
+      (apenasNumeros.length === 12 || apenasNumeros.length === 13)
+    ) {
+      return `+${apenasNumeros}`;
+    }
+
+    return null;
   };
 
   const criarRecaptcha = async () => {
@@ -100,14 +125,9 @@ function PaginaLogin() {
       window.recaptchaVerifier = null;
     }
 
-    window.recaptchaVerifier = new RecaptchaVerifier(
-      auth,
-      'recaptcha-container',
-      {
-        size: 'invisible',
-        callback: () => {}
-      }
-    );
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible'
+    });
 
     await window.recaptchaVerifier.render();
   };
@@ -134,41 +154,41 @@ function PaginaLogin() {
 
         await sendSignInLinkToEmail(auth, email, actionCodeSettings);
         window.localStorage.setItem('emailParaLogin', email);
-
         alert('Link de login enviado para seu e-mail.');
-    } else {
-      const telefoneLimpo = telefone.replace(/\D/g, '');
+      } else {
+        const numeroFormatado = formatarTelefoneFirebase(telefone);
 
-      if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
-        setErro('Digite um telefone válido com DDD.');
-        setCarregando(false);
-        return;
-      }
+        if (!numeroFormatado) {
+          setErro('Digite um telefone válido com DDD.');
+          setCarregando(false);
+          return;
+        }
 
-      await criarRecaptcha();
+        await criarRecaptcha();
 
-      const appVerifier = window.recaptchaVerifier;
-      const numeroFormatado = formatarTelefoneFirebase(telefone);
+        const result = await signInWithPhoneNumber(
+          auth,
+          numeroFormatado,
+          window.recaptchaVerifier
+        );
 
-      try {
-        const result = await signInWithPhoneNumber(auth, numeroFormatado, appVerifier);
         setConfirmationResult(result);
         setMostrarCodigo(true);
+        setCodigo('');
         alert('Código de verificação enviado para seu telefone.');
-      } catch (erroTelefone) {
-        try {
-          const widgetId = await window.recaptchaVerifier.render();
-          window.grecaptcha?.reset(widgetId);
-        } catch (e) {}
-
-        throw erroTelefone;
       }
-    }
 
       setUltimoEnvio(Date.now());
     } catch (erro) {
       console.error('Erro ao enviar código:', erro);
       setErro(traduzirErroFirebase(erro));
+
+      try {
+        if (window.recaptchaVerifier) {
+          const widgetId = await window.recaptchaVerifier.render();
+          window.grecaptcha?.reset(widgetId);
+        }
+      } catch (e) {}
     } finally {
       setCarregando(false);
     }
@@ -219,6 +239,14 @@ function PaginaLogin() {
     }
   };
 
+  const selecionarMetodo = (metodo) => {
+    setMetodoLogin(metodo);
+    setMostrarCodigo(false);
+    setCodigo('');
+    setErro(null);
+    setConfirmationResult(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <Cabecalho />
@@ -234,6 +262,7 @@ function PaginaLogin() {
           <div className="space-y-6">
             <div className="flex justify-center space-x-4">
               <button
+                type="button"
                 onClick={() => aoLoginSocial('Google')}
                 disabled={carregando}
                 className="flex-1 flex justify-center items-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ifood-red disabled:opacity-50"
@@ -248,6 +277,7 @@ function PaginaLogin() {
               </button>
 
               <button
+                type="button"
                 onClick={() => aoLoginSocial('Facebook')}
                 disabled={carregando}
                 className="flex-1 flex justify-center items-center px-4 py-3 border border-[#1877F2] rounded-md shadow-sm text-sm font-medium text-[#1877F2] bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1877F2] disabled:opacity-50"
@@ -273,12 +303,8 @@ function PaginaLogin() {
 
             <div className="flex justify-center space-x-4">
               <button
-                onClick={() => {
-                  setMetodoLogin('email');
-                  setMostrarCodigo(false);
-                  setCodigo('');
-                  setErro(null);
-                }}
+                type="button"
+                onClick={() => selecionarMetodo('email')}
                 className={`px-4 py-2 text-sm font-medium rounded-md ${
                   metodoLogin === 'email'
                     ? 'bg-ifood-red text-white'
@@ -289,12 +315,8 @@ function PaginaLogin() {
               </button>
 
               <button
-                onClick={() => {
-                  setMetodoLogin('telefone');
-                  setMostrarCodigo(false);
-                  setCodigo('');
-                  setErro(null);
-                }}
+                type="button"
+                onClick={() => selecionarMetodo('telefone')}
                 className={`px-4 py-2 text-sm font-medium rounded-md ${
                   metodoLogin === 'telefone'
                     ? 'bg-ifood-red text-white'
@@ -326,8 +348,6 @@ function PaginaLogin() {
                         placeholder="Seu e-mail"
                       />
                     </div>
-                    <p className="mt-2 text-xs text-gray-500">
-                                         </p>
                   </div>
                 ) : (
                   <div>
@@ -403,6 +423,7 @@ function PaginaLogin() {
                       setMostrarCodigo(false);
                       setCodigo('');
                       setConfirmationResult(null);
+                      setErro(null);
                     }}
                     disabled={carregando}
                     className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ifood-red disabled:opacity-50"
@@ -413,15 +434,13 @@ function PaginaLogin() {
               </form>
             )}
           </div>
+
           <p className="text-center mt-4 text-sm text-gray-600">
-  Você não tem cadastro?{" "}
-  <Link
-    to="/cadastro"
-    className="text-ifood-red font-semibold hover:underline"
-  >
-    Faça agora mesmo!
-  </Link>
-</p>
+            Você não tem cadastro?{' '}
+            <Link to="/cadastro" className="text-ifood-red font-semibold hover:underline">
+              Faça agora mesmo!
+            </Link>
+          </p>
         </div>
       </div>
 

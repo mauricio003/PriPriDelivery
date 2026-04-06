@@ -25,26 +25,19 @@ function Home() {
   const [carrinhoAberto, setCarrinhoAberto] = useState(false);
   const [itensCarrinho, setItensCarrinho] = useState([]);
   const [totalCarrinho, setTotalCarrinho] = useState(0);
-  const [categorias, setCategorias] = useState([]);
-
-  async function carregarCategorias() {
-  try {
-    const snapshot = await getDocs(collection(db, "restaurantes"));
-
-    const lista = snapshot.docs.map((doc) => doc.data().categoria);
-
-    // Remove duplicados
-    const categoriasUnicas = [...new Set(lista)];
-
-    setCategorias(categoriasUnicas);
-  } catch (error) {
-    console.error("Erro ao carregar categorias:", error);
-  }
-}
-
-useEffect(() => {
-  carregarCategorias();
-}, []);
+  const categorias = [
+    'Todos',
+    'Lanche',
+    'Pizza',
+    'Doces e Bolos',
+    'Árabe',
+    'Brasileira',
+    'Italiana',
+    'Japonesa',
+    'Mexicana',
+    'Vegetariana'
+  ];
+  
 
 
 
@@ -58,78 +51,72 @@ useEffect(() => {
     }
   }, [user]);
 
-  const carregarCarrinho = async () => {
-    try {
-      if (!user?.uid) return;
+const carregarCarrinho = async () => {
+  try {
+    if (!user?.uid) return;
 
-      const q = query(
-        collection(db, 'carrinho'),
-        where('userId', '==', user.uid)
-      );
+    const q = query(
+      collection(db, 'carrinho'),
+      where('user_id', '==', user.uid)
+    );
 
-      const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q);
 
-      const itensBase = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...item.data()
-      }));
+    const itensBase = snapshot.docs.map((item) => ({
+      id: item.id,
+      ...item.data(),
+    }));
 
-      const itensComProduto = await Promise.all(
-        itensBase.map(async (item) => {
-          try {
-            const produtoRef = doc(db, 'produtos', item.produtoId);
-            const produtoSnap = await getDoc(produtoRef);
+    const itensComProduto = await Promise.all(
+      itensBase.map(async (item) => {
+        try {
+          const produtoRef = doc(db, 'produtos', item.produto_id);
+          const produtoSnap = await getDoc(produtoRef);
 
-            if (!produtoSnap.exists()) {
-              return {
-                ...item,
-                produto: null
+          if (!produtoSnap.exists()) {
+            return { ...item, produto: null };
+          }
+
+          const produto = {
+            id: produtoSnap.id,
+            ...produtoSnap.data(),
+          };
+
+          let restaurante = null;
+
+          if (produto.restaurante_id) {
+            const restauranteRef = doc(db, 'restaurantes', produto.restaurante_id);
+            const restauranteSnap = await getDoc(restauranteRef);
+
+            if (restauranteSnap.exists()) {
+              restaurante = {
+                id: restauranteSnap.id,
+                ...restauranteSnap.data(),
               };
             }
-
-            const produto = {
-              id: produtoSnap.id,
-              ...produtoSnap.data()
-            };
-
-            let restaurante = null;
-
-            if (produto.restauranteId) {
-              const restauranteRef = doc(db, 'restaurantes', produto.restauranteId);
-              const restauranteSnap = await getDoc(restauranteRef);
-
-              if (restauranteSnap.exists()) {
-                restaurante = {
-                  id: restauranteSnap.id,
-                  ...restauranteSnap.data()
-                };
-              }
-            }
-
-            return {
-              ...item,
-              produto: {
-                ...produto,
-                restaurante
-              }
-            };
-          } catch (erro) {
-            console.error('Erro ao montar item do carrinho:', erro);
-            return {
-              ...item,
-              produto: null
-            };
           }
-        })
-      );
 
-      const itensValidos = itensComProduto.filter((item) => item.produto);
-      setItensCarrinho(itensValidos);
-      calcularTotal(itensValidos);
-    } catch (erro) {
-      console.error('Erro ao carregar carrinho:', erro);
-    }
-  };
+          return {
+            ...item,
+            produto: {
+              ...produto,
+              restaurante,
+            },
+          };
+        } catch (erro) {
+          console.error('Erro ao montar item do carrinho:', erro);
+          return { ...item, produto: null };
+        }
+      })
+    );
+
+    const itensValidos = itensComProduto.filter((item) => item.produto);
+    setItensCarrinho(itensValidos);
+    calcularTotal(itensValidos);
+  } catch (erro) {
+    console.error('Erro ao carregar carrinho:', erro);
+  }
+};
 
   const calcularTotal = (itens) => {
     const total = itens.reduce((acc, item) => {
@@ -285,7 +272,7 @@ useEffect(() => {
           </div>
 
           <div className="mt-4 flex space-x-4 overflow-x-auto pb-2">
-            {["Todos", ...categorias].map((categoria) => (
+            {categorias.map((categoria) => (
               <button
                 key={categoria}
                 onClick={() => setCategoriaAtiva(categoria)}
