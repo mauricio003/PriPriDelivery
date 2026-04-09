@@ -10,6 +10,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  arrayUnion
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,6 +26,8 @@ function Produtos() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
   const [busca, setBusca] = useState('');
+  const [novaCategoria, setNovaCategoria] = useState('');
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false);
 
   const produtosFiltrados = produtos.filter((produto) =>
   produto.nome.toLowerCase().includes(busca.toLowerCase())
@@ -100,6 +103,56 @@ const carregarProdutos = async () => {
   const podeEditarProdutos = () => {
     return restaurante?.userId === user?.uid;
   };
+
+  const adicionarCategoria = async () => {
+  try {
+    setErro(null);
+
+    if (!podeEditarProdutos()) {
+      setErro('Você não tem permissão para adicionar categorias neste restaurante');
+      return;
+    }
+
+    const categoriaLimpa = novaCategoria.trim();
+
+    if (!categoriaLimpa) {
+      setErro('Digite o nome da categoria');
+      return;
+    }
+
+    const categoriasExistentes = restaurante?.categorias_produtos || [];
+    const categoriaJaExiste = categoriasExistentes.some(
+      (categoria) => categoria.toLowerCase() === categoriaLimpa.toLowerCase()
+    );
+
+    if (categoriaJaExiste) {
+      setErro('Essa categoria já existe para este restaurante');
+      return;
+    }
+
+    setSalvandoCategoria(true);
+
+    await updateDoc(doc(db, 'restaurantes', restauranteId), {
+      categorias_produtos: arrayUnion(categoriaLimpa)
+    });
+
+    const restauranteAtualizado = await getDoc(doc(db, 'restaurantes', restauranteId));
+
+    if (restauranteAtualizado.exists()) {
+      setRestaurante({
+        id: restauranteAtualizado.id,
+        ...restauranteAtualizado.data()
+      });
+    }
+
+    setNovaCategoria('');
+  } catch (erro) {
+    console.error('Erro ao adicionar categoria:', erro);
+    setErro('Erro ao adicionar categoria');
+  } finally {
+    setSalvandoCategoria(false);
+  }
+};
 
   const adicionarAoCarrinho = async (produto) => {
     try {
@@ -474,13 +527,53 @@ const carregarProdutos = async () => {
                     required
                   >
                     <option value="">Selecione uma categoria</option>
-                    <option value="Entrada">Entrada</option>
-                    <option value="Prato Principal">Prato Principal</option>
-                    <option value="Sobremesa">Sobremesa</option>
-                    <option value="Bebida">Bebida</option>
-                    <option value="Acompanhamento">Acompanhamento</option>
+                    {restaurante?.categorias_produtos?.map((categoria) => (
+                      <option key={categoria} value={categoria}>
+                        {categoria}
+                      </option>
+                    ))}
                   </select>
                 </div>
+
+                              {podeEditarProdutos() && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Nova categoria
+                  </label>
+
+                  <div className="mt-1 flex gap-2">
+                    <input
+                      type="text"
+                      value={novaCategoria}
+                      onChange={(e) => setNovaCategoria(e.target.value)}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                      placeholder="Ex.: Pizza, Combo, Temaki"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={adicionarCategoria}
+                      disabled={salvandoCategoria}
+                      className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 disabled:opacity-50"
+                    >
+                      {salvandoCategoria ? 'Salvando...' : 'Adicionar'}
+                    </button>
+                  </div>
+
+                  {restaurante?.categorias_produtos?.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {restaurante.categorias_produtos.map((categoria) => (
+                        <span
+                          key={categoria}
+                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                        >
+                          {categoria}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">

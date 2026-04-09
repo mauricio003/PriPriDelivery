@@ -38,6 +38,7 @@ function Restaurante() {
     horario_abertura: '',
     horario_fechamento: '',
     imagemUrl: '',
+    categorias_produtos: [],
     taxaEntregaNormal: 5.0,
     taxaEntregaRapida: 8.0,
     tempoEntregaNormal: 45,
@@ -78,7 +79,7 @@ const carregarRestaurantes = async () => {
     console.error('Erro ao carregar restaurantes:', erro);
     setErro('Não foi possível carregar os restaurantes');
   } finally {
-    setCarregando(false);
+    setCarregando(false); 
   }
   };
 
@@ -93,19 +94,20 @@ const carregarRestaurantes = async () => {
     setErro(null);
 
     try {
-      const dadosRestaurante = {
-        nome: restauranteAtual.nome,
-        descricao: restauranteAtual.descricao,
-        categoria: restauranteAtual.categoria,
-        horario_abertura: restauranteAtual.horario_abertura,
-        horario_fechamento: restauranteAtual.horario_fechamento,
-        imagemUrl: restauranteAtual.imagemUrl,
-        userId: user.uid,
-        taxaEntregaNormal: parseFloat(restauranteAtual.taxaEntregaNormal),
-        taxaEntregaRapida: parseFloat(restauranteAtual.taxaEntregaRapida),
-        tempoEntregaNormal: parseInt(restauranteAtual.tempoEntregaNormal),
-        tempoEntregaRapida: parseInt(restauranteAtual.tempoEntregaRapida)
-      };
+  const dadosRestaurante = {
+    nome: restauranteAtual.nome,
+    descricao: restauranteAtual.descricao,
+    categoria: restauranteAtual.categoria,
+    horario_abertura: restauranteAtual.horario_abertura,
+    horario_fechamento: restauranteAtual.horario_fechamento,
+    imagemUrl: restauranteAtual.imagemUrl,
+    userId: user.uid,
+    categorias_produtos: restauranteAtual.categorias_produtos || [],
+    taxaEntregaNormal: parseFloat(restauranteAtual.taxaEntregaNormal),
+    taxaEntregaRapida: parseFloat(restauranteAtual.taxaEntregaRapida),
+    tempoEntregaNormal: parseInt(restauranteAtual.tempoEntregaNormal),
+    tempoEntregaRapida: parseInt(restauranteAtual.tempoEntregaRapida)
+  };
 
       if (restauranteAtual.id) {
         await updateDoc(doc(db, 'restaurantes', restauranteAtual.id), dadosRestaurante);
@@ -117,19 +119,20 @@ const carregarRestaurantes = async () => {
       }
 
       setModalAberto(false);
-      setRestauranteAtual({
-        id: null,
-        nome: '',
-        descricao: '',
-        categoria: '',
-        horario_abertura: '',
-        horario_fechamento: '',
-        imagemUrl: '',
-        taxaEntregaNormal: 5.0,
-        taxaEntregaRapida: 8.0,
-        tempoEntregaNormal: 45,
-        tempoEntregaRapida: 25
-      });
+setRestauranteAtual({
+  id: null,
+  nome: '',
+  descricao: '',
+  categoria: '',
+  horario_abertura: '',
+  horario_fechamento: '',
+  imagemUrl: '',
+  categorias_produtos: [],
+  taxaEntregaNormal: 5.0,
+  taxaEntregaRapida: 8.0,
+  tempoEntregaNormal: 45,
+  tempoEntregaRapida: 25
+});
 
       await carregarRestaurantes();
     } catch (erro) {
@@ -239,22 +242,23 @@ const carregarRestaurantes = async () => {
             <h2 className="text-lg font-semibold text-gray-900">Meus Restaurantes</h2>
 
             <button
-              onClick={() => {
-                setRestauranteAtual({
-                  id: null,
-                  nome: '',
-                  descricao: '',
-                  categoria: '',
-                  horario_abertura: '',
-                  horario_fechamento: '',
-                  imagemUrl: '',
-                  taxaEntregaNormal: 5.0,
-                  taxaEntregaRapida: 8.0,
-                  tempoEntregaNormal: 45,
-                  tempoEntregaRapida: 25
-                });
-                setModalAberto(true);
-              }}
+            onClick={() => {
+              setRestauranteAtual({
+                id: null,
+                nome: '',
+                descricao: '',
+                categoria: '',
+                horario_abertura: '',
+                horario_fechamento: '',
+                imagemUrl: '',
+                categorias_produtos: [],
+                taxaEntregaNormal: 5.0,
+                taxaEntregaRapida: 8.0,
+                tempoEntregaNormal: 45,
+                tempoEntregaRapida: 25
+              });
+              setModalAberto(true);
+            }}
               className="flex items-center px-4 py-2 bg-ifood-red text-white rounded-md hover:bg-red-700"
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -442,22 +446,28 @@ const carregarRestaurantes = async () => {
                     Categoria
                   </label>
                   <select
-                    value={restauranteAtual.categoria}
+                    value={produtoAtual.categoria}
                     onChange={(e) =>
-                      setRestauranteAtual({
-                        ...restauranteAtual,
+                      setProdutoAtual({
+                        ...produtoAtual,
                         categoria: e.target.value
                       })
                     }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
                     required
                   >
-                    <option value="">Selecione uma categoria</option>
-                    <option value="Brasileira">Brasileira</option>
-                    <option value="Italiana">Italiana</option>
-                    <option value="Japonesa">Japonesa</option>
-                    <option value="Mexicana">Mexicana</option>
-                    <option value="Vegetariana">Vegetariana</option>
+                    <option value="">
+                      {restaurante?.categorias_produtos?.length > 0
+                        ? 'Selecione uma categoria'
+                        : 'Cadastre uma categoria primeiro'}
+                    </option>
+
+                    {Array.isArray(restaurante?.categorias_produtos) &&
+                      restaurante.categorias_produtos.map((categoria) => (
+                        <option key={categoria} value={categoria}>
+                          {categoria}
+                        </option>
+                      ))}
                   </select>
                 </div>
 

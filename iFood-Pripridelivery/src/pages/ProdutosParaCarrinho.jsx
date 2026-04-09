@@ -20,7 +20,11 @@ import {
   Plus,
   Minus,
   CreditCard,
-  QrCode as Qr
+  QrCode as Qr,
+  Star,
+  Clock3,
+  MapPin,
+  X,
 } from 'lucide-react';
 import CarrinhoModal from '../components/CarrinhoModal';
 
@@ -51,6 +55,9 @@ function ProdutosParaCarrinho() {
     validade: '',
     cvv: ''
   });
+
+  const [verMaisAberto, setVerMaisAberto] = useState(false);
+  const [abaInfo, setAbaInfo] = useState('sobre');
 
   useEffect(() => {
     carregarRestaurante();
@@ -356,6 +363,32 @@ const carregarRestaurante = async () => {
       alert('Erro ao processar pagamento. Tente novamente.');
     }
   };
+  
+    const formatarMoeda = (valor) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(Number(valor || 0));
+  };
+
+  const montarHorarioSemanal = () => {
+    const abertura = restaurante?.horario_abertura || '10:45';
+    const fechamento = restaurante?.horario_fechamento || '23:59';
+
+    return [
+      { dia: 'Segunda-feira', horario: `${abertura} às ${fechamento}` },
+      { dia: 'Terça-feira', horario: `${abertura} às ${fechamento}` },
+      { dia: 'Quarta-feira', horario: `${abertura} às ${fechamento}` },
+      { dia: 'Quinta-feira', horario: `${abertura} às ${fechamento}` },
+      { dia: 'Sexta-feira', horario: `${abertura} às ${fechamento}` },
+      { dia: 'Sábado', horario: `${abertura} às ${fechamento}` },
+      { dia: 'Domingo', horario: `${abertura} às ${fechamento}` },
+    ];
+  };
+
+  const horarioSemanal = montarHorarioSemanal();
+
+
 
   const categorias = [...new Set(produtosFiltrados.map((p) => p.categoria))];
 
@@ -378,9 +411,6 @@ return (
               <ArrowLeft className="w-5 h-5 mr-2" />
               Voltar
             </button>
-            <span className="ml-4 text-xl font-semibold text-gray-900">
-              {restaurante?.nome}
-            </span>
           </div>
 
           <div className="flex items-center">
@@ -397,6 +427,79 @@ return (
     </nav>
 
     <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      {restaurante && (
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 mb-6">
+          <div className="w-full h-64 bg-gray-200">
+            {restaurante.imagemUrl ? (
+              <img
+                src={restaurante.imagemUrl}
+                alt={restaurante.nome}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Store className="w-16 h-16 text-gray-400" />
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-white border border-gray-200 shadow-sm overflow-hidden flex items-center justify-center">
+                {restaurante.imagemUrl ? (
+                  <img
+                    src={restaurante.imagemUrl}
+                    alt={restaurante.nome}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Store className="w-8 h-8 text-gray-400" />
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    {restaurante.nome}
+                  </h1>
+
+                  <div className="flex items-center gap-1 text-yellow-500 font-semibold">
+                    <Star className="w-4 h-4 fill-yellow-400" />
+                    <span>4.5</span>
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-500 mt-1">
+                  {restaurante.categoria || 'Restaurante'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-6 text-sm text-gray-600 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Clock3 className="w-4 h-4" />
+                <span>
+                  {restaurante.horario_abertura || '10:45'} às {restaurante.horario_fechamento || '23:59'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="font-medium">
+                  Entrega: {formatarMoeda(restaurante.taxaEntregaNormal || 0)}
+                </span>
+              </div>
+
+              <button
+                onClick={() => setVerMaisAberto(true)}
+                className="text-ifood-red font-semibold hover:underline"
+              >
+                Ver mais
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6">
         <input
           type="text"
@@ -624,7 +727,7 @@ return (
                 </div>
               </div>
             )}
-
+            
             {formaPagamento === 'pix' && (
               <div className="text-center py-4">
                 <Qr className="w-32 h-32 mx-auto mb-4" />
@@ -671,6 +774,117 @@ return (
         </div>
       </div>
     )}
+
+    {verMaisAberto && (
+      <div className="fixed inset-0 z-50">
+        <div
+          className="absolute inset-0 bg-black/30"
+          onClick={() => setVerMaisAberto(false)}
+        />
+
+        <div className="absolute top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl p-6 overflow-y-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900">Informações</h2>
+            <button
+              onClick={() => setVerMaisAberto(false)}
+              className="p-2 rounded-full hover:bg-gray-100"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+
+          <div className="flex border-b border-gray-200 mb-6">
+            <button
+              onClick={() => setAbaInfo('sobre')}
+              className={`flex-1 pb-3 text-sm font-semibold ${
+                abaInfo === 'sobre'
+                  ? 'text-ifood-red border-b-2 border-ifood-red'
+                  : 'text-gray-500'
+              }`}
+            >
+              Sobre
+            </button>
+
+            <button
+              onClick={() => setAbaInfo('horario')}
+              className={`flex-1 pb-3 text-sm font-semibold ${
+                abaInfo === 'horario'
+                  ? 'text-ifood-red border-b-2 border-ifood-red'
+                  : 'text-gray-500'
+              }`}
+            >
+              Horário
+            </button>
+
+            <button
+              onClick={() => setAbaInfo('pagamento')}
+              className={`flex-1 pb-3 text-sm font-semibold ${
+                abaInfo === 'pagamento'
+                  ? 'text-ifood-red border-b-2 border-ifood-red'
+                  : 'text-gray-500'
+              }`}
+            >
+              Pagamento
+            </button>
+          </div>
+
+          {abaInfo === 'sobre' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 mb-2">Sobre</h3>
+                <p className="text-sm text-gray-600 leading-6">
+                  {restaurante?.descricao || 'Restaurante cadastrado na plataforma.'}
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 mb-2">Endereço</h3>
+                <div className="flex items-start gap-2 text-sm text-gray-600">
+                  <MapPin className="w-4 h-4 mt-0.5" />
+                  <span>{restaurante?.endereco || 'Endereço não informado'}</span>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 mb-2">Outras informações</h3>
+                <p className="text-sm text-gray-600">
+                  Categoria: {restaurante?.categoria || 'Não informada'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Taxa entrega normal: {formatarMoeda(restaurante?.taxaEntregaNormal || 0)}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Taxa entrega rápida: {formatarMoeda(restaurante?.taxaEntregaRapida || 0)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {abaInfo === 'horario' && (
+            <div className="space-y-4">
+              {horarioSemanal.map((item) => (
+                <div
+                  key={item.dia}
+                  className="flex items-center justify-between text-sm border-b border-gray-100 pb-3"
+                >
+                  <span className="text-gray-700 font-medium">{item.dia}</span>
+                  <span className="text-gray-500">{item.horario}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {abaInfo === 'pagamento' && (
+            <div className="space-y-3 text-sm text-gray-600">
+              <p>• Cartão de crédito</p>
+              <p>• PIX</p>
+              <p>• Cartão na entrega</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
   </div>
 );
 }

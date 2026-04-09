@@ -14,8 +14,24 @@ import {
 } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { MapPin, Plus, Pencil, Trash2, Store, ShoppingCart } from 'lucide-react';
+import MapaEndereco from "../components/MapaEndereco";
 
 function Endereco() {
+  const [enderecoMapa, setEnderecoMapa] = useState("");
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+  const [enderecoBuscaMapa, setEnderecoBuscaMapa] = useState("");
+  const atualizarMapaComEnderecoCompleto = (numeroAtual) => {
+  const enderecoCompleto = `${enderecoAtual.logradouro || ''}, ${numeroAtual || ''}, ${enderecoAtual.bairro || ''}, ${enderecoAtual.cidade || ''} - ${enderecoAtual.estado || ''}, Brasil`;
+  setEnderecoBuscaMapa(enderecoCompleto);
+};
+
+  const aoSelecionarLocal = ({ endereco, latitude, longitude }) => {
+    setEnderecoMapa(endereco);
+    setLatitude(latitude);
+    setLongitude(longitude);
+  };
+
   const navegacao = useNavigate();
   const { usuario: user, estaAutenticado, logout } = useAuth();
   const [enderecos, setEnderecos] = useState([]);
@@ -92,6 +108,9 @@ function Endereco() {
         cidade: data.localidade || '',
         estado: data.uf || ''
       }));
+
+      const enderecoCompleto = `${data.logradouro || ''}, ${enderecoAtual.numero || ''}, ${data.bairro || ''}, ${data.localidade || ''} - ${data.uf || ''}, Brasil`;
+      setEnderecoBuscaMapa(enderecoCompleto);
     } catch (erro) {
       setErro('CEP não encontrado');
     }
@@ -131,7 +150,11 @@ function Endereco() {
         cidade: enderecoAtual.cidade,
         estado: enderecoAtual.estado,
         principal: enderecoAtual.principal,
-        user_id: user.uid
+        user_id: user.uid,
+        
+        endereco_mapa: enderecoMapa,
+        latitude,
+        longitude
       };
 
       if (enderecoAtual.id) {
@@ -156,6 +179,12 @@ function Endereco() {
         principal: false
       });
 
+      setEnderecoMapa("");
+      setLatitude(null);
+      setLongitude(null);
+      setEnderecoBuscaMapa("");
+      
+
       await carregarEnderecos();
     } catch (erro) {
       console.error('Erro ao salvar endereço:', erro);
@@ -168,6 +197,11 @@ function Endereco() {
       ...endereco,
       id: endereco.id
     });
+
+    setEnderecoMapa(endereco.endereco_mapa || "");
+    setLatitude(endereco.latitude || null);
+    setLongitude(endereco.longitude || null);
+
     setModalAberto(true);
   };
 
@@ -267,6 +301,12 @@ function Endereco() {
                   estado: '',
                   principal: false
                 });
+
+                setEnderecoMapa("");
+                setLatitude(null);
+                setLongitude(null);
+                setEnderecoBuscaMapa("");
+
                 setModalAberto(true);
               }}
               className="flex items-center px-4 py-2 bg-ifood-red text-white rounded-md hover:bg-red-700"
@@ -348,7 +388,26 @@ function Endereco() {
               {enderecoAtual.id ? 'Editar Endereço' : 'Novo Endereço'}
             </h3>
 
+
             <form onSubmit={salvarEndereco}>
+              <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Localização no mapa
+              </label>
+
+              <MapaEndereco
+                onSelecionarLocal={aoSelecionarLocal}
+                enderecoBusca={enderecoBuscaMapa}
+              />
+
+              <input
+                type="text"
+                value={enderecoMapa}
+                readOnly
+                placeholder="Endereço selecionado no mapa"
+                className="mt-3 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+              />
+              </div>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">CEP</label>
@@ -397,12 +456,16 @@ function Endereco() {
                     <input
                       type="text"
                       value={enderecoAtual.numero}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const novoNumero = e.target.value;
+
                         setEnderecoAtual({
                           ...enderecoAtual,
-                          numero: e.target.value
-                        })
-                      }
+                          numero: novoNumero
+                        });
+
+                        atualizarMapaComEnderecoCompleto(novoNumero);
+                      }}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
                       required
                     />
