@@ -26,6 +26,7 @@ import {
   MapPin,
   X,
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import CarrinhoModal from '../components/CarrinhoModal';
 
 function ProdutosParaCarrinho() {
@@ -284,8 +285,8 @@ const carregarRestaurante = async () => {
       if (itensCarrinho.length > 0) {
         const primeiroItem = itensCarrinho[0];
         if (primeiroItem.produto?.restaurante?.id !== restauranteId) {
-          alert(
-            'Você já possui itens de outro restaurante no carrinho. Finalize ou remova esses itens antes de adicionar produtos de um novo restaurante.'
+          toast.error(
+            'Você já possui itens de outro restaurante no carrinho. Finalize ou remova esses itens primeiro.'
           );
           return;
         }
@@ -323,7 +324,7 @@ const carregarRestaurante = async () => {
       }));
 
       await carregarCarrinho();
-      alert('Produto adicionado ao carrinho!');
+      toast.success('Produto adicionado ao carrinho!');
     } catch (erro) {
       console.error('Erro ao adicionar ao carrinho:', erro);
       setErro('Erro ao adicionar produto ao carrinho');
@@ -346,7 +347,7 @@ const carregarRestaurante = async () => {
         await deleteDoc(doc(db, 'carrinho', item.id));
       }
 
-      alert('Pedido realizado com sucesso!');
+      toast.success('Pedido realizado com sucesso!');
       setModalPagamentoAberto(false);
       setFormaPagamento('');
       setDadosPagamento({
@@ -360,7 +361,7 @@ const carregarRestaurante = async () => {
       navegacao('/home');
     } catch (erro) {
       console.error('Erro ao processar pagamento:', erro);
-      alert('Erro ao processar pagamento. Tente novamente.');
+      toast.error('Erro ao processar pagamento. Tente novamente.');
     }
   };
   

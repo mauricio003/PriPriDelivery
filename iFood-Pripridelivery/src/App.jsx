@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import PaginaLogin from './pages/PaginaLogin';
 import Cadastro from './pages/Cadastro';
 import Endereco from './pages/Endereco';
@@ -29,6 +30,7 @@ function RotaProtegida({ children }) {
 function App() {
   return (
     <ProvedorAutenticacao>
+      <Toaster position="top-center" reverseOrder={false} />
       <BrowserRouter
         future={{
           v7_startTransition: true,

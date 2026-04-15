@@ -10,7 +10,6 @@ function AcompanhamentoPedido() {
   const location = useLocation();
   const [statusAtual, setStatusAtual] = useState(0);
   const [pedidoConcluido, setPedidoConcluido] = useState(false);
-  // alert('Produto adicionado ao carrinho!');
 
   const statusPedido = [
     {

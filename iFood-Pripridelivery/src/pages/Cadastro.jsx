@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc, getDocs, collection, query, where } from 'firebase/firestore';
+import { toast } from 'react-hot-toast';
 
 function Cadastro() {
   const navegacao = useNavigate();
@@ -69,8 +70,7 @@ function Cadastro() {
       });
 
       await signOut(auth);
-
-      alert('Cadastro realizado com sucesso!');
+      toast.success('Cadastro realizado com sucesso!');
       navegacao('/login', { replace: true });
     } catch (erro) {
       console.error('Erro ao cadastrar:', erro);

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head><title>OTP Test</title></head>
+<body>
+  <h2>🔐 Teste OTP Firebase</h2>
+  <input id="phone" placeholder="+5511999999999" style="width:200px"/>
+  <button onclick="enviarOTP()">Enviar Código</button><br><br>
+  
+  <input id="code" placeholder="123456" style="width:200px"/>
+  <button onclick="verificarOTP()">Verificar</button>
+  
+  <div id="recaptcha-container"></div>
+  <p id="status"></p>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+    
+    // ← PEGUE NO CONSOLE FIREBASE → Project Settings → SDK config
+    const firebaseConfig = {
+      apiKey: "AIzaSyB6xSuII2a6Fvu5rChYTnYWWz5WJEWs6y4",
+      authDomain: "kyq-delivery-app.firebaseapp.com",
+      projectId: "kyq-delivery-app",
+      storageBucket: "kyq-delivery-app.firebasestorage.app",
+      messagingSenderId: "245620266497",
+      appId: "1:245620266497:web:dc8b7797f83cd020899200"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    
+    window.enviarOTP = async () => {
+      try {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible'
+        });
+        const phone = document.getElementById('phone').value;
+        window.confirmationResult = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
+        document.getElementById('status').innerText = '✅ Código enviado!';
+      } catch(e) {
+        document.getElementById('status').innerText = '❌ ' + e.message;
+      }
+    };
+    
+    window.verificarOTP = async () => {
+      try {
+        const code = document.getElementById('code').value;
+        const result = await window.confirmationResult.confirm(code);
+        document.getElementById('status').innerText = '🎉 LOGADO! ' + result.user.phoneNumber;
+      } catch(e) {
+        document.getElementById('status').innerText = '❌ Código inválido';
+      }
+    };
+  </script>
+</body>
+</html>

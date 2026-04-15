@@ -15,6 +15,7 @@ import {
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Pencil, Trash2, ArrowLeft, ShoppingCart } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 function Produtos() {
   const { restauranteId } = useParams();
@@ -185,7 +186,7 @@ const carregarProdutos = async () => {
         });
       }
 
-      alert('Produto adicionado ao carrinho!');
+      toast.success('Produto adicionado ao carrinho!');
     } catch (erro) {
       console.error('Erro ao adicionar ao carrinho:', erro);
       setErro('Erro ao adicionar produto ao carrinho');
