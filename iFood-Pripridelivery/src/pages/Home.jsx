@@ -174,14 +174,20 @@ const carregarCarrinho = async () => {
     }
   };
 
-  const carregarRestaurantes = async () => {
+    const carregarRestaurantes = async () => {
     try {
+      console.log("Project ID:", import.meta.env.VITE_FIREBASE_PROJECT_ID);
+
       const snapshot = await getDocs(collection(db, 'restaurantes'));
+
+      console.log("Quantidade de restaurantes:", snapshot.docs.length);
 
       const lista = snapshot.docs.map((item) => ({
         id: item.id,
         ...item.data()
       }));
+
+      console.log("Lista de restaurantes:", lista);
 
       setRestaurantes(lista);
     } catch (erro) {

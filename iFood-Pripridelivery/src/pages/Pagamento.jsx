@@ -6,7 +6,8 @@ import {
   query,
   where,
   deleteDoc,
-  doc
+  doc,
+  addDoc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { CreditCard, QrCode, ArrowLeft } from 'lucide-react';
@@ -21,6 +22,7 @@ function Pagamento() {
   const [formaPagamento, setFormaPagamento] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
+  const [sugestoesEndereco, setSugestoesEndereco] = useState([]);
   const [dadosPagamento, setDadosPagamento] = useState({
     numero: '',
     nome: '',
@@ -28,6 +30,18 @@ function Pagamento() {
     cvv: ''
   });
   const [enderecoEntrega, setEnderecoEntrega] = useState(null);
+  const [enderecos, setEnderecos] = useState([]);
+  const [mostrarNovoEndereco, setMostrarNovoEndereco] = useState(false);
+  const [novoEndereco, setNovoEndereco] = useState({
+    cep: '',
+    logradouro: '',
+    numero: '',
+    complemento: '',
+    bairro: '',
+    cidade: '',
+    estado: '',
+    principal: false
+  });
   const [total, setTotal] = useState(0);
   const [itensCarrinho, setItensCarrinho] = useState([]);
 
@@ -39,35 +53,134 @@ function Pagamento() {
 
     setTotal(location.state.total);
     setItensCarrinho(location.state.itens);
-    carregarEnderecoEntrega();
-  }, [location.state]);
 
-  const carregarEnderecoEntrega = async () => {
+    if (usuario?.uid) {
+      carregarEnderecoEntrega();
+    }
+  }, [location.state, usuario]);
+
+    const carregarEnderecoEntrega = async () => {
+      try {
+        if (!usuario?.uid) return;
+
+        const q = query(
+          collection(db, 'enderecos'),
+          where('user_id', '==', usuario.uid)
+        );    
+
+        const snapshot = await getDocs(q);
+
+        const lista = snapshot.docs.map((item) => ({
+          id: item.id,
+          ...item.data()
+        }));
+
+        setEnderecos(lista);
+
+        if (lista.length === 0) {
+          setEnderecoEntrega(null);
+          return;
+        }
+
+        const principal = lista.find((endereco) => endereco.principal === true);
+
+        setEnderecoEntrega(principal || lista[0]);
+      } catch (erro) {
+        console.error('Erro ao carregar endereço:', erro);
+        setErro('Erro ao carregar endereço de entrega');
+      }
+    };  
+
+        const salvarNovoEndereco = async (e) => {
+          e.preventDefault();
+
+          try {
+            if (!usuario?.uid) return;
+
+            const dados = {
+              ...novoEndereco,
+              user_id: usuario.uid
+            };      
+
+            await addDoc(collection(db, 'enderecos'), dados);
+
+            setNovoEndereco({
+              cep: '',
+              logradouro: '',
+              numero: '',
+              complemento: '',
+              bairro: '',
+              cidade: '',
+              estado: '',
+              principal: false
+            });
+
+            setMostrarNovoEndereco(false);
+
+            await carregarEnderecoEntrega();
+          } catch (erro) {
+            console.error('Erro ao salvar novo endereço:', erro);
+            setErro('Erro ao salvar novo endereço');
+          }
+        };
+
+  const buscarCep = async (cep) => {
     try {
-      if (!usuario?.uid) return;
+      const cepLimpo = cep.replace(/\D/g, '');
 
-      const q = query(
-        collection(db, 'enderecos'),
-        where('userId', '==', usuario.uid),
-        where('principal', '==', true)
-      );
+      if (cepLimpo.length !== 8) return;
 
-      const snapshot = await getDocs(q);
+      const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await response.json();
 
-      if (snapshot.empty) {
-        setEnderecoEntrega(null);
+      if (data.erro) {
+        setErro('CEP não encontrado');
         return;
       }
 
-      const endereco = {
-        id: snapshot.docs[0].id,
-        ...snapshot.docs[0].data()
-      };
-
-      setEnderecoEntrega(endereco);
+      setNovoEndereco((prev) => ({
+        ...prev,
+        cep: cepLimpo,
+        logradouro: data.logradouro || '',
+        bairro: data.bairro || '',
+        cidade: data.localidade || '',
+        estado: data.uf || ''
+      }));
     } catch (erro) {
-      console.error('Erro ao carregar endereço:', erro);
-      setErro('Erro ao carregar endereço de entrega');
+      console.error('Erro ao buscar CEP:', erro);
+      setErro('Erro ao buscar CEP');
+    }
+  };
+
+  const buscarSugestoesEndereco = async (texto) => {
+    try {
+      if (!window.google || !texto || texto.length < 3) {
+        setSugestoesEndereco([]);
+        return;
+      }
+
+      const service = new window.google.maps.places.AutocompleteService();
+
+      service.getPlacePredictions(
+        {
+          input: texto,
+          componentRestrictions: { country: 'br' }
+        },
+        (predictions, status) => {
+          if (
+            status !== window.google.maps.places.PlacesServiceStatus.OK ||
+            !predictions
+          ) {
+            setSugestoesEndereco([]);
+            return;
+          }
+
+          setSugestoesEndereco(predictions);
+        }
+      );
+    } catch (erro) {
+      console.error('Erro ao buscar sugestões:', erro);
+      setSugestoesEndereco([]);
     }
   };
 
@@ -102,6 +215,11 @@ const orders = itensCarrinho.map((item) => ({
   };
 
   const processarPagamento = async () => {
+    if (!enderecoEntrega) {
+      setErro('Selecione ou cadastre um endereço de entrega');
+      return;
+    }  
+
     if (!formaPagamento) {
       setErro('Selecione uma forma de pagamento');
       return;
@@ -211,28 +329,214 @@ const orders = itensCarrinho.map((item) => ({
           </div>
 
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Endereço de Entrega
-            </h2>
-            {enderecoEntrega ? (
-              <div>
-                <p className="text-gray-900">
-                  {enderecoEntrega.logradouro}, {enderecoEntrega.numero}
-                </p>
-                {enderecoEntrega.complemento && (
-                  <p className="text-gray-700">{enderecoEntrega.complemento}</p>
-                )}
-                <p className="text-gray-700">
-                  {enderecoEntrega.bairro}, {enderecoEntrega.cidade} -{' '}
-                  {enderecoEntrega.estado}
-                </p>
-                <p className="text-gray-700">CEP: {enderecoEntrega.cep}</p>
-              </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Endereço de Entrega
+          </h2>
+
+          <div className="space-y-3">
+            {enderecos.length > 0 ? (
+              enderecos.map((endereco) => (
+                <label
+                  key={endereco.id}
+                  className={`block border rounded-lg p-4 cursor-pointer transition ${
+                    enderecoEntrega?.id === endereco.id
+                      ? 'border-ifood-red bg-red-50'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  <div className="flex items-start">
+                    <input
+                      type="radio"
+                      name="enderecoEntrega"
+                      checked={enderecoEntrega?.id === endereco.id}
+                      onChange={() => setEnderecoEntrega(endereco)}
+                      className="mt-1 mr-3"
+                    />
+
+                    <div>
+                      <p className="text-gray-900 font-medium">
+                        {endereco.logradouro}, {endereco.numero}
+                      </p>
+
+                      {endereco.complemento && (
+                        <p className="text-gray-700">{endereco.complemento}</p>
+                      )}
+
+                      <p className="text-gray-700">
+                        {endereco.bairro}, {endereco.cidade} - {endereco.estado}
+                      </p>
+
+                      <p className="text-gray-700">CEP: {endereco.cep}</p>
+
+                      {endereco.principal && (
+                        <span className="inline-block mt-2 text-xs px-2 py-1 rounded bg-green-100 text-green-700">
+                          Principal
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </label>
+              ))
             ) : (
-              <p className="text-gray-500">Nenhum endereço principal definido</p>
+              <p className="text-gray-500">Nenhum endereço cadastrado</p>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setMostrarNovoEndereco(!mostrarNovoEndereco)}
+              className="text-ifood-red font-medium hover:text-red-700"
+            >
+              {mostrarNovoEndereco ? 'Cancelar' : '+ Cadastrar novo endereço'}
+            </button>
+
+            {mostrarNovoEndereco && (
+              <form onSubmit={salvarNovoEndereco} className="mt-4 space-y-4 border rounded-lg p-4 bg-gray-50">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">CEP</label>
+                <input
+                  type="text"
+                  value={novoEndereco.cep}
+                  onChange={(e) =>
+                    setNovoEndereco({ ...novoEndereco, cep: e.target.value })
+                  }
+                  onBlur={(e) => buscarCep(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                  required
+                />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Logradouro</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={novoEndereco.logradouro}
+                      onChange={(e) => {
+                        const valor = e.target.value;
+                        setNovoEndereco({ ...novoEndereco, logradouro: valor });
+                        buscarSugestoesEndereco(valor);
+                      }}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                      required
+                    />
+
+                    {sugestoesEndereco.length > 0 && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {sugestoesEndereco.map((sugestao) => (
+                          <button
+                            key={sugestao.place_id}
+                            type="button"
+                            onClick={() => {
+                              setNovoEndereco({
+                                ...novoEndereco,
+                                logradouro: sugestao.description
+                              });
+                              setSugestoesEndereco([]);
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
+                          >
+                            {sugestao.description}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Número</label>
+                    <input
+                      type="text"
+                      value={novoEndereco.numero}
+                      onChange={(e) =>
+                        setNovoEndereco({ ...novoEndereco, numero: e.target.value })
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Complemento</label>
+                    <input
+                      type="text"
+                      value={novoEndereco.complemento}
+                      onChange={(e) =>
+                        setNovoEndereco({ ...novoEndereco, complemento: e.target.value })
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                    />
+                  </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Bairro</label>
+                  <input
+                    type="text"
+                    value={novoEndereco.bairro}
+                    onChange={(e) =>
+                      setNovoEndereco({ ...novoEndereco, bairro: e.target.value })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                    required
+                  />
+                </div>
+
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Cidade</label>
+                    <input
+                      type="text"
+                      value={novoEndereco.cidade}
+                      onChange={(e) =>
+                        setNovoEndereco({ ...novoEndereco, cidade: e.target.value })
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Estado</label>
+                    <input
+                      type="text"
+                      value={novoEndereco.estado}
+                      onChange={(e) =>
+                        setNovoEndereco({ ...novoEndereco, estado: e.target.value })
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    id="principal"
+                    type="checkbox"
+                    checked={novoEndereco.principal}
+                    onChange={(e) =>
+                      setNovoEndereco({ ...novoEndereco, principal: e.target.checked })
+                    }
+                    className="mr-2"
+                  />
+                  <label htmlFor="principal" className="text-sm text-gray-700">
+                    Definir como endereço principal
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2 px-4 rounded-md text-white bg-ifood-red hover:bg-red-700"
+                >
+                  Salvar novo endereço
+                </button>
+              </form>
             )}
           </div>
-
+        </div>
           <div className="p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Forma de Pagamento
@@ -361,6 +665,7 @@ const orders = itensCarrinho.map((item) => ({
                 onClick={processarPagamento}
                 disabled={
                   carregando ||
+                  !enderecoEntrega ||
                   !formaPagamento ||
                   (formaPagamento === 'cartao' &&
                     (!dadosPagamento.numero ||

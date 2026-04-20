@@ -285,8 +285,8 @@ setRestauranteAtual({
                   key={restaurante.id}
                   className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start min-w-0 flex-1">
                       {restaurante.imagemUrl ? (
                         <img
                           src={restaurante.imagemUrl}
@@ -368,8 +368,8 @@ setRestauranteAtual({
       </main>
 
       {modalAberto && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+      <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">  
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               {restauranteAtual.id ? 'Editar Restaurante' : 'Novo Restaurante'}
             </h3>
@@ -446,28 +446,26 @@ setRestauranteAtual({
                     Categoria
                   </label>
                   <select
-                    value={produtoAtual.categoria}
+                    value={restauranteAtual.categoria}
                     onChange={(e) =>
-                      setProdutoAtual({
-                        ...produtoAtual,
+                      setRestauranteAtual({
+                        ...restauranteAtual,
                         categoria: e.target.value
                       })
                     }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
                     required
                   >
-                    <option value="">
-                      {restaurante?.categorias_produtos?.length > 0
-                        ? 'Selecione uma categoria'
-                        : 'Cadastre uma categoria primeiro'}
-                    </option>
-
-                    {Array.isArray(restaurante?.categorias_produtos) &&
-                      restaurante.categorias_produtos.map((categoria) => (
-                        <option key={categoria} value={categoria}>
-                          {categoria}
-                        </option>
-                      ))}
+                    <option value="">Selecione uma categoria</option>
+                    <option value="Lanche">Lanche</option>
+                    <option value="Pizza">Pizza</option>
+                    <option value="Doces e Bolos">Doces e Bolos</option>
+                    <option value="Árabe">Árabe</option>
+                    <option value="Brasileira">Brasileira</option>
+                    <option value="Italiana">Italiana</option>
+                    <option value="Japonesa">Japonesa</option>
+                    <option value="Mexicana">Mexicana</option>
+                    <option value="Vegetariana">Vegetariana</option>
                   </select>
                 </div>
 
