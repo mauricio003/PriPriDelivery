@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { doc, setDoc, getDocs, collection, query, where } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { toast } from 'react-hot-toast';
 
 function Cadastro() {
@@ -39,22 +39,6 @@ function Cadastro() {
 
       if (senha !== confirmarSenha) {
         throw new Error('As senhas não coincidem.');
-      }
-
-      const usuariosRef = collection(db, 'usuarios');
-
-      const consultaEmail = query(usuariosRef, where('email', '==', email));
-      const emailSnapshot = await getDocs(consultaEmail);
-
-      if (!emailSnapshot.empty) {
-        throw new Error('Este email já está cadastrado');
-      }
-
-      const consultaCpf = query(usuariosRef, where('cpf', '==', cpfLimpo));
-      const cpfSnapshot = await getDocs(consultaCpf);
-
-      if (!cpfSnapshot.empty) {
-        throw new Error('Este CPF já está cadastrado');
       }
 
       const credencial = await createUserWithEmailAndPassword(auth, email, senha);

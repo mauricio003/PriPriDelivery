@@ -30,11 +30,14 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^9.2.1",
     "typescript": "^5.2.2",
     "vite": "^5.4.21"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently --kill-others-on-fail --names \"FRONT,BACK\" --prefix-colors \"cyan,yellow\" \"vite\" \"node server.js\"",
+    "dev:front": "vite",
+    "dev:back": "node server.js",
     "build": "vite build",
     "preview": "vite preview",
     "server": "node server.js",

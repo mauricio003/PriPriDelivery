@@ -25,15 +25,15 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 
-if (!accountSid || !authToken || !verifyServiceSid) {
-  console.error('Erro: Todas as variáveis de ambiente do Twilio são necessárias:');
-  if (!accountSid) console.error('- TWILIO_ACCOUNT_SID não está definido');
-  if (!authToken) console.error('- TWILIO_AUTH_TOKEN não está definido');
-  if (!verifyServiceSid) console.error('- TWILIO_VERIFY_SERVICE_SID não está definido');
-  process.exit(1);
-}
+let client = null;
+const isTwilioConfigured = accountSid && authToken && verifyServiceSid;
 
-const client = twilio(accountSid, authToken);
+if (!isTwilioConfigured) {
+  console.warn('⚠️ ATENÇÃO: Variáveis do Twilio ausentes. Iniciando no MODO SIMULAÇÃO (Mock SMS). O código de teste será sempre 123456.');
+} else {
+  client = twilio(accountSid, authToken);
+  console.log('✅ Twilio configurado e pronto para envio de SMS real.');
+}
 
 const formatPhoneNumber = (phoneNumber) => {
   // Remove all non-numeric characters
@@ -55,6 +55,11 @@ app.post('/api/send-verification', async (req, res) => {
     
     console.log('Enviando verificação para:', phoneNumber);
     
+    if (!isTwilioConfigured) {
+      console.log(`[MOCK] Simulando envio de SMS para ${phoneNumber}`);
+      return res.json({ success: true, sid: 'mock_sid_123', mock: true });
+    }
+    
     const verification = await client.verify.v2
       .services(verifyServiceSid)
       .verifications
@@ -64,7 +69,7 @@ app.post('/api/send-verification', async (req, res) => {
       });
     
     console.log('Verificação enviada:', verification.sid);
-    res.json({ success: true, sid: verification.sid });
+    res.json({ success: true, sid: verification.sid, mock: false });
   } catch (error) {
     console.error('Erro Twilio:', error);
     res.status(500).json({ 
@@ -88,6 +93,17 @@ app.post('/api/verify-code', async (req, res) => {
       });
     }
 
+    if (!isTwilioConfigured) {
+      const isCodeValid = code === '123456';
+      console.log(`[MOCK] Verificação do código ${code}: ${isCodeValid ? 'Aprovado' : 'Recusado'}`);
+      return res.json({
+        success: true,
+        valid: isCodeValid,
+        status: isCodeValid ? 'approved' : 'pending',
+        mock: true
+      });
+    }
+
     const verificationCheck = await client.verify.v2
       .services(verifyServiceSid)
       .verificationChecks
@@ -101,7 +117,8 @@ app.post('/api/verify-code', async (req, res) => {
     res.json({
       success: true,
       valid: verificationCheck.status === 'approved',
-      status: verificationCheck.status
+      status: verificationCheck.status,
+      mock: false
     });
   } catch (error) {
     console.error('Erro de verificação:', error);

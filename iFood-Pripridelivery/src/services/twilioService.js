@@ -28,8 +28,9 @@ export const sendVerificationCode = async (phoneNumber) => {
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Falha ao enviar código de verificação');
+      let errorMsg = 'Falha ao enviar código de verificação';
+      try { const e = await response.json(); errorMsg = e.error || errorMsg; } catch {}
+      throw new Error(errorMsg);
     }
     
     const data = await response.json();
@@ -58,8 +59,9 @@ export const verifyCode = async (phoneNumber, code) => {
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Falha ao verificar código');
+      let errorMsg = 'Falha ao verificar código';
+      try { const e = await response.json(); errorMsg = e.error || errorMsg; } catch {}
+      throw new Error(errorMsg);
     }
     
     const data = await response.json();
