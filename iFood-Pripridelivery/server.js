@@ -143,7 +143,6 @@ app.post('/criar-preferencia', async (req, res) => {
           failure: 'http://localhost:5173/pagamento',
           pending: 'http://localhost:5173/pagamento'
         },
-        auto_return: 'approved'
       }
     });
 

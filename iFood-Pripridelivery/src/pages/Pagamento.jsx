@@ -20,6 +20,7 @@ function Pagamento() {
   const { usuario } = useAuth();
 
   const [formaPagamento, setFormaPagamento] = useState('');
+  const [tipoEntrega, setTipoEntrega] = useState("entrega");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
   const [sugestoesEndereco, setSugestoesEndereco] = useState([]);
@@ -369,6 +370,37 @@ const orders = itensCarrinho.map((item) => ({
           </div>
 
           <div className="p-6 border-b border-gray-200">
+
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Tipo de Entrega
+            </h2>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setTipoEntrega("entrega")}
+                className={`flex-1 py-3 rounded-lg border ${
+                  tipoEntrega === "entrega"
+                    ? "border-ifood-red bg-red-50 text-ifood-red"
+                    : "border-gray-300"
+                }`}
+              >
+                Entrega
+              </button>
+
+              <button
+                onClick={() => setTipoEntrega("retirada")}
+                className={`flex-1 py-3 rounded-lg border ${
+                  tipoEntrega === "retirada"
+                    ? "border-ifood-red bg-red-50 text-ifood-red"
+                    : "border-gray-300"
+                }`}
+              >
+                Retirada no local
+              </button>
+            </div>
+          </div>
+
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Endereço de Entrega
           </h2>
@@ -721,7 +753,7 @@ const orders = itensCarrinho.map((item) => ({
                 }
                 disabled={
                   carregando ||
-                  !enderecoEntrega ||
+                  (tipoEntrega === "entrega" && !enderecoEntrega) ||
                   !formaPagamento ||
                   (formaPagamento === 'cartao' &&
                     (!dadosPagamento.numero ||

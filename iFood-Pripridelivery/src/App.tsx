@@ -36,7 +36,7 @@ function App() {
         }}
       >
         <Routes>
-          <Route path="/" element={<Cadastro />} />
+          <Route path="/" element={<PaginaLogin />} />
           <Route path="/cadastro" element={<Cadastro />} />
           <Route path="/login" element={<PaginaLogin />} />
           <Route
