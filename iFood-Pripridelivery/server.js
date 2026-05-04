@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';
 import dotenv from 'dotenv';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 dotenv.config();
 
@@ -25,15 +26,17 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 
+let client = null;
+
 if (!accountSid || !authToken || !verifyServiceSid) {
-  console.error('Erro: Todas as variáveis de ambiente do Twilio são necessárias:');
-  if (!accountSid) console.error('- TWILIO_ACCOUNT_SID não está definido');
-  if (!authToken) console.error('- TWILIO_AUTH_TOKEN não está definido');
-  if (!verifyServiceSid) console.error('- TWILIO_VERIFY_SERVICE_SID não está definido');
-  process.exit(1);
+  console.warn('⚠️ Twilio não configurado. SMS desativado.');
+} else {
+  client = twilio(accountSid, authToken);
 }
 
-const client = twilio(accountSid, authToken);
+const mercadoPagoClient = new MercadoPagoConfig({
+  accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN
+});
 
 const formatPhoneNumber = (phoneNumber) => {
   // Remove all non-numeric characters
@@ -108,6 +111,51 @@ app.post('/api/verify-code', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Falha ao verificar código'
+    });
+  }
+});
+
+app.post('/criar-preferencia', async (req, res) => {
+  try {
+    const { itens, total } = req.body;
+
+    const preference = new Preference(mercadoPagoClient);
+
+    const response = await preference.create({
+      body: {
+        items: itens?.length
+          ? itens.map((item) => ({
+              title: item.nome || 'Produto PriPriDelivery',
+              quantity: Number(item.quantidade || 1),
+              unit_price: Number(item.preco || 0),
+              currency_id: 'BRL'
+            }))
+          : [
+              {
+                title: 'Pedido PriPriDelivery',
+                quantity: 1,
+                unit_price: Number(total),
+                currency_id: 'BRL'
+              }
+            ],
+        back_urls: {
+          success: 'http://localhost:5173/acompanhamento',
+          failure: 'http://localhost:5173/pagamento',
+          pending: 'http://localhost:5173/pagamento'
+        },
+        auto_return: 'approved'
+      }
+    });
+
+    res.json({
+      id: response.id,
+      init_point: response.init_point
+    });
+  } catch (error) {
+    console.error('Erro Mercado Pago:', error);
+    res.status(500).json({
+      erro: 'Erro ao criar preferência Mercado Pago',
+      detalhes: error.message
     });
   }
 });

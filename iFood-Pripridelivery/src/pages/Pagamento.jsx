@@ -214,6 +214,46 @@ const orders = itensCarrinho.map((item) => ({
     );
   };
 
+  const pagarComMercadoPago = async () => {
+    if (!enderecoEntrega) {
+      setErro('Selecione ou cadastre um endereço de entrega');
+      return;
+    }
+
+    setCarregando(true);
+    setErro(null);
+
+    try {
+      const response = await fetch('http://localhost:3001/criar-preferencia', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          itens: itensCarrinho.map((item) => ({
+            nome: item.produto.nome,
+            quantidade: item.quantidade,
+            preco: item.produto.preco
+          })),
+          total
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        setErro('Erro ao iniciar pagamento com Mercado Pago');
+      }
+    } catch (erro) {
+      console.error('Erro Mercado Pago:', erro);
+      setErro('Erro ao conectar com Mercado Pago');
+    } finally {
+      setCarregando(false);
+    }
+  };
+
   const processarPagamento = async () => {
     if (!enderecoEntrega) {
       setErro('Selecione ou cadastre um endereço de entrega');
@@ -548,7 +588,7 @@ const orders = itensCarrinho.map((item) => ({
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-3 gap-4 mb-6">
               <button
                 onClick={() => setFormaPagamento('cartao')}
                 className={`flex items-center justify-center p-4 rounded-lg border ${
@@ -572,7 +612,19 @@ const orders = itensCarrinho.map((item) => ({
                 <QrCode className="w-6 h-6 mr-2" />
                 <span>PIX</span>
               </button>
-            </div>
+              
+              <button
+                onClick={() => setFormaPagamento('mercadopago')}
+                className={`flex items-center justify-center p-4 rounded-lg border ${
+                  formaPagamento === 'mercadopago'
+                    ? 'border-ifood-red bg-red-50'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <CreditCard className="w-6 h-6 mr-2" />
+                <span>Mercado Pago</span>
+              </button>
+           </div>
 
             {formaPagamento === 'cartao' && (
               <div className="space-y-4">
@@ -662,7 +714,11 @@ const orders = itensCarrinho.map((item) => ({
 
             <div className="mt-6">
               <button
-                onClick={processarPagamento}
+                onClick={
+                  formaPagamento === 'mercadopago'
+                    ? pagarComMercadoPago
+                    : processarPagamento
+                }
                 disabled={
                   carregando ||
                   !enderecoEntrega ||
