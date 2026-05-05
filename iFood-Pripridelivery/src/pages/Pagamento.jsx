@@ -120,7 +120,6 @@ function Pagamento() {
 
             await carregarEnderecoEntrega();
           } catch (erro) {
-            console.error('Erro ao salvar novo endereço:', erro);
             setErro('Erro ao salvar novo endereço');
           }
         };
@@ -186,33 +185,41 @@ function Pagamento() {
   };
 
   const enviarNFe = async () => {
-    const pedidoId =
-      location.state?.pedidoId || Math.random().toString(36).substring(2, 11);
+    try {
+      const pedidoId =
+        location.state?.pedidoId || Math.random().toString(36).substring(2, 11);
 
-const orders = itensCarrinho.map((item) => ({
-  name: `${item.quantidade}x ${item.produto.nome} (${item.produto.restaurante?.nome || 'Restaurante'})`,
-  units: item.quantidade,
-  price: (item.produto.preco * item.quantidade).toFixed(2),
-  image_url: item.produto.imagemUrl || 'https://via.placeholder.com/64'
-}));
+      const orders = itensCarrinho.map((item) => ({
+        name: `${item.quantidade}x ${item.produto.nome} (${item.produto.restaurante?.nome || 'Restaurante'})`,
+        units: item.quantidade,
+        price: (item.produto.preco * item.quantidade).toFixed(2),
+        image_url: item.produto.imagemUrl || 'https://via.placeholder.com/64'
+      }));
 
-    const shipping = 0.0;
-    const tax = 0.0;
+      const shipping = 0.0;
+      const tax = 0.0;
 
-    await emailjs.send(
-      'service_odnkte2',
-      'template_en9q65a',
-      {
-        status_message: 'teste',
-        order_id: pedidoId,
-        orders,
-        cost_shipping: shipping.toFixed(2),
-        cost_tax: tax.toFixed(2),
-        cost_total: (total + shipping + tax).toFixed(2),
-        to_email: usuario?.email
-      },
-      'trUMBMErkFdAQ-Hfv'
-    );
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID_ORDER || 'service_knm7juc',
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID_ORDER || 'template_xgl1cv5',
+        {
+          title: 'Nota Fiscal do Pedido',
+          status_message: 'Pagamento Processado',
+          order_id: pedidoId,
+          orders,
+          cost_shipping: shipping.toFixed(2),
+          cost_tax: tax.toFixed(2),
+          cost_total: (total + shipping + tax).toFixed(2),
+          to_email: usuario?.email,
+          email: usuario?.email,
+          name: usuario?.displayName || 'Cliente'
+        },
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'IoyyR4GAPSffyyZi_'
+      );
+    } catch (error) {
+      console.error('Erro ao enviar e-mail (EmailJS):', error);
+      // Não bloqueia o fluxo do pedido se o e-mail falhar
+    }
   };
 
   const pagarComMercadoPago = async () => {
@@ -286,13 +293,56 @@ const orders = itensCarrinho.map((item) => ({
 
       await enviarNFe();
 
+      const pedidoId = Math.random().toString(36).substring(2, 11);
+      const codigoVerificacao = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Salvar pedido no Firestore para o histórico
+      try {
+        await addDoc(collection(db, 'pedidos'), {
+          user_id: usuario.uid,
+          pedidoId: pedidoId,
+          codigoVerificacao: codigoVerificacao,
+          total: total,
+          itens: itensCarrinho.map(item => ({
+            nome: item.produto.nome,
+            quantidade: item.quantidade,
+            preco: item.produto.preco
+          })),
+          status: 'O restaurante aceitou o pedido',
+          createdAt: new Date().toISOString()
+        });
+      } catch (error) {
+        console.warn('Nota: Pedido não salvo no histórico devido às regras do Firebase:', error);
+      }
+
+      // Enviar e-mail com o código de verificação
+      try {
+        await emailjs.send(
+          import.meta.env.VITE_EMAILJS_SERVICE_ID_ORDER || 'service_knm7juc',
+          import.meta.env.VITE_EMAILJS_TEMPLATE_ID_ORDER || 'template_xgl1cv5',
+          {
+            title: 'Código de Verificação',
+            name: usuario?.displayName || 'Cliente',
+            message: codigoVerificacao,
+            time: new Date().toLocaleString(),
+            pedido_id: pedidoId,
+            to_email: usuario?.email,
+            email: usuario?.email
+          },
+          import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'IoyyR4GAPSffyyZi_'
+        );
+      } catch (error) {
+        console.error('Erro ao enviar código de verificação (EmailJS):', error);
+      }
+
       for (const item of itensCarrinho) {
         await deleteDoc(doc(db, 'carrinho', item.id));
       }
 
       navegacao('/acompanhamento', {
         state: {
-          pedidoId: Math.random().toString(36).substring(2, 11)
+          pedidoId: pedidoId,
+          codigoVerificacao: codigoVerificacao // Passamos também via state para facilitar
         }
       });
     } catch (erro) {

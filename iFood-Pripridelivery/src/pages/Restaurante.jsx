@@ -20,7 +20,8 @@ import {
   Trash2,
   MapPin,
   UtensilsCrossed,
-  ShoppingCart
+  ShoppingCart,
+  ShoppingBag
 } from 'lucide-react';
 
 function Restaurante() {
@@ -213,6 +214,14 @@ setRestauranteAtual({
               >
                 <MapPin className="w-4 h-4 mr-2" />
                 Meus Endereços
+              </button>
+
+              <button
+                onClick={() => navegacao('/pedidos')}
+                className="flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ifood-red"
+              >
+                <ShoppingBag className="w-4 h-4 mr-2" />
+                Pedidos
               </button>
 
               <button

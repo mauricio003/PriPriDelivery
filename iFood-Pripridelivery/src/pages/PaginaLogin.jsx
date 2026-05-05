@@ -16,9 +16,9 @@ import InputMask from 'react-input-mask';
 import { toast } from 'react-hot-toast';
 import { sendVerificationCode, verifyCode as apiVerifyCode } from '../services/twilioService';
 
-const EMAILJS_SERVICE_ID  = 'service_hkwnz6m';
-const EMAILJS_TEMPLATE_ID = 'template_qwl57ip';
-const EMAILJS_PUBLIC_KEY  = 'IoyyR4GAPSffyyZi_';
+const EMAILJS_SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID_OTP;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID_OTP;
+const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutos
 
 /* ─────────────────────────────────────────────

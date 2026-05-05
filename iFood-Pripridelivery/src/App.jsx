@@ -10,6 +10,7 @@ import ProdutosParaCarrinho from './pages/ProdutosParaCarrinho';
 import Pagamento from './pages/Pagamento';
 import AcompanhamentoPedido from './pages/AcompanhamentoPedido';
 import Home from './pages/Home';
+import MeusPedidos from './pages/MeusPedidos';
 import { ProvedorAutenticacao } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 
@@ -94,6 +95,14 @@ function App() {
             element={
               <RotaProtegida>
                 <AcompanhamentoPedido />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/pedidos"
+            element={
+              <RotaProtegida>
+                <MeusPedidos />
               </RotaProtegida>
             }
           />

@@ -183,6 +183,50 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// --- Funcionalidade de Acompanhamento de Pedido ---
+const ordersStatus = new Map();
+const statusSteps = [
+  'O restaurante aceitou o pedido',
+  'Pedido sendo preparado',
+  'Encontrando motorista parceiro',
+  'Seu motorista está indo até você',
+  'Seu pedido chegou'
+];
+
+app.get('/api/order-status/:orderId', (req, res) => {
+  const { orderId } = req.params;
+  const transitionTime = parseInt(process.env.ORDER_STATUS_TRANSITION_TIME || '30', 10) * 1000;
+
+  if (!ordersStatus.has(orderId)) {
+    ordersStatus.set(orderId, {
+      createdAt: Date.now(),
+      id: orderId
+    });
+  }
+
+  const order = ordersStatus.get(orderId);
+  const elapsed = Date.now() - order.createdAt;
+  
+  // Calcula o index do status baseado no tempo decorrido
+  let statusIndex = Math.floor(elapsed / transitionTime);
+  
+  if (statusIndex >= statusSteps.length) {
+    statusIndex = statusSteps.length - 1;
+  }
+
+  res.json({
+    orderId,
+    status: statusSteps[statusIndex],
+    statusIndex,
+    isFinished: statusIndex === statusSteps.length - 1,
+    elapsedSeconds: Math.floor(elapsed / 1000),
+    nextStatusIn: statusIndex < statusSteps.length - 1 
+      ? Math.ceil((transitionTime - (elapsed % transitionTime)) / 1000)
+      : 0
+  });
+});
+// --------------------------------------------------
+
 // Serve static files from the dist directory
 app.use(express.static(path.join(__dirname, 'dist')));
 
