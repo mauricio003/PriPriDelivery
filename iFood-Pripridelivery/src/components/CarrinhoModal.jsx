@@ -18,13 +18,19 @@ function CarrinhoModal({
 
   const restaurante = itens[0]?.produto.restaurante;
   
-  const taxaEntrega = tipoEntrega === 'normal' 
-    ? Number(restaurante?.taxa_entrega_normal || 5)
-    : Number(restaurante?.taxa_entrega_rapida || 8);
+  const taxaEntrega =
+    tipoEntrega === 'normal'
+      ? Number(restaurante?.taxa_entrega_normal || 5)
+      : tipoEntrega === 'rapida'
+      ? Number(restaurante?.taxa_entrega_rapida || 8)
+      : 0;
 
-  const tempoEntrega = tipoEntrega === 'normal'
-    ? Number(restaurante?.tempo_entrega_normal || 45)
-    : Number(restaurante?.tempo_entrega_rapida || 25);
+  const tempoEntrega =
+    tipoEntrega === 'normal'
+      ? Number(restaurante?.tempo_entrega_normal || 45)
+      : tipoEntrega === 'rapida'
+      ? Number(restaurante?.tempo_entrega_rapida || 25)
+      : 0;
 
   const subtotal = Number(total || 0);
   const totalComEntrega = subtotal + taxaEntrega;
@@ -114,34 +120,50 @@ function CarrinhoModal({
                   <label className="block text-sm font-medium text-gray-700">
                     Tipo de Entrega
                   </label>
-                  <div className="flex flex-col space-y-2">
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        value="normal"
-                        checked={tipoEntrega === 'normal'}
-                        onChange={(e) => setTipoEntrega(e.target.value)}
-                        className="h-4 w-4 text-ifood-red focus:ring-ifood-red border-gray-300"
-                      />
-                      <span className="ml-2 text-sm text-gray-900">
-                        Normal ({restaurante?.tempo_entrega_normal || 45} min) - {formatarMoeda(restaurante?.taxa_entrega_normal || 5)}
-                      </span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        value="rapida"
-                        checked={tipoEntrega === 'rapida'}
-                        onChange={(e) => setTipoEntrega(e.target.value)}
-                        className="h-4 w-4 text-ifood-red focus:ring-ifood-red border-gray-300"
-                      />
-                      <span className="ml-2 text-sm text-gray-900">
-                        Rápida ({restaurante?.tempo_entrega_rapida || 25} min) - {formatarMoeda(restaurante?.taxa_entrega_rapida || 8)}
-                      </span>
-                    </label>
+                    <div className="flex flex-col space-y-2">
+
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="normal"
+                          checked={tipoEntrega === 'normal'}
+                          onChange={(e) => setTipoEntrega(e.target.value)}
+                          className="h-4 w-4 text-ifood-red focus:ring-ifood-red border-gray-300"
+                        />
+                        <span className="ml-2 text-sm text-gray-900">
+                          Normal ({restaurante?.tempo_entrega_normal || 45} min) - {formatarMoeda(restaurante?.taxa_entrega_normal || 5)}
+                        </span>
+                      </label>
+
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="rapida"
+                          checked={tipoEntrega === 'rapida'}
+                          onChange={(e) => setTipoEntrega(e.target.value)}
+                          className="h-4 w-4 text-ifood-red focus:ring-ifood-red border-gray-300"
+                        />
+                        <span className="ml-2 text-sm text-gray-900">
+                          Rápida ({restaurante?.tempo_entrega_rapida || 25} min) - {formatarMoeda(restaurante?.taxa_entrega_rapida || 8)}
+                        </span>
+                      </label>
+
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="retirada"
+                          checked={tipoEntrega === 'retirada'}
+                          onChange={(e) => setTipoEntrega(e.target.value)}
+                          className="h-4 w-4 text-ifood-red focus:ring-ifood-red border-gray-300"
+                        />
+                        <span className="ml-2 text-sm text-gray-900">
+                          Retirada no local - R$ 0,00
+                        </span>
+                      </label>
+
                   </div>
-                </div>
-              </div>
+                  </div>
+                  </div> 
 
               <div className="border-t pt-4 space-y-2">
                 <div className="flex justify-between text-sm">

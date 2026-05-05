@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';
 import dotenv from 'dotenv';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 dotenv.config();
 
@@ -34,6 +35,11 @@ if (!isTwilioConfigured) {
   client = twilio(accountSid, authToken);
   console.log('✅ Twilio configurado e pronto para envio de SMS real.');
 }
+
+const mercadoPagoClient = new MercadoPagoConfig({
+  accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN
+});
+
 
 const formatPhoneNumber = (phoneNumber) => {
   // Remove all non-numeric characters
@@ -125,6 +131,50 @@ app.post('/api/verify-code', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Falha ao verificar código'
+    });
+  }
+});
+
+app.post('/criar-preferencia', async (req, res) => {
+  try {
+    const { itens, total } = req.body;
+
+    const preference = new Preference(mercadoPagoClient);
+
+    const response = await preference.create({
+      body: {
+        items: itens?.length
+          ? itens.map((item) => ({
+              title: item.nome || 'Produto PriPriDelivery',
+              quantity: Number(item.quantidade || 1),
+              unit_price: Number(item.preco || 0),
+              currency_id: 'BRL'
+            }))
+          : [
+              {
+                title: 'Pedido PriPriDelivery',
+                quantity: 1,
+                unit_price: Number(total),
+                currency_id: 'BRL'
+              }
+            ],
+        back_urls: {
+          success: 'http://localhost:5173/acompanhamento',
+          failure: 'http://localhost:5173/pagamento',
+          pending: 'http://localhost:5173/pagamento'
+        },
+      }
+    });
+
+    res.json({
+      id: response.id,
+      init_point: response.init_point
+    });
+  } catch (error) {
+    console.error('Erro Mercado Pago:', error);
+    res.status(500).json({
+      erro: 'Erro ao criar preferência Mercado Pago',
+      detalhes: error.message
     });
   }
 });
