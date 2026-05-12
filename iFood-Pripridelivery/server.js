@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer';
+import PDFDocument from 'pdfkit';
 import express from 'express';
 import cors from 'cors';
 import twilio from 'twilio';
@@ -174,6 +176,88 @@ app.post('/criar-preferencia', async (req, res) => {
     console.error('Erro Mercado Pago:', error);
     res.status(500).json({
       erro: 'Erro ao criar preferência Mercado Pago',
+      detalhes: error.message
+    });
+  }
+});
+
+app.post('/api/enviar-nfe-pdf', async (req, res) => {
+  try {
+    const { pedidoId, email, nomeCliente, itens, total, endereco } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'E-mail do cliente não informado' });
+    }
+
+    const doc = new PDFDocument({ margin: 50 });
+    const buffers = [];
+
+    doc.on('data', buffers.push.bind(buffers));
+
+    doc.fontSize(20).text('PriPriDelivery', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(16).text('Nota Fiscal / Comprovante do Pedido');
+    doc.moveDown();
+
+    doc.fontSize(12).text(`Pedido: ${pedidoId}`);
+    doc.text(`Cliente: ${nomeCliente || 'Cliente'}`);
+    doc.text(`E-mail: ${email}`);
+    doc.text(`Data: ${new Date().toLocaleString('pt-BR')}`);
+
+    if (endereco) {
+      doc.moveDown();
+      doc.text('Endereço de entrega:');
+      doc.text(`${endereco.logradouro || ''}, ${endereco.numero || ''}`);
+      doc.text(`${endereco.bairro || ''} - ${endereco.cidade || ''}/${endereco.estado || ''}`);
+      doc.text(`CEP: ${endereco.cep || ''}`);
+    }
+
+    doc.moveDown();
+    doc.text('Itens do pedido:');
+    doc.moveDown();
+
+    itens.forEach((item) => {
+      const subtotal = Number(item.preco || 0) * Number(item.quantidade || 1);
+      doc.text(`${item.quantidade}x ${item.nome} - R$ ${subtotal.toFixed(2)}`);
+    });
+
+    doc.moveDown();
+    doc.fontSize(14).text(`Total: R$ ${Number(total || 0).toFixed(2)}`, { align: 'right' });
+
+    doc.end();
+
+    doc.on('end', async () => {
+      const pdfBuffer = Buffer.concat(buffers);
+
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      await transporter.sendMail({
+        from: `"PriPriDelivery" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `Nota Fiscal do Pedido ${pedidoId}`,
+        text: `Olá, ${nomeCliente || 'Cliente'}! Segue em anexo a nota fiscal/comprovante do seu pedido.`,
+        attachments: [
+          {
+            filename: `nota-fiscal-${pedidoId}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+          }
+        ]
+      });
+
+      res.json({ success: true, message: 'NF em PDF enviada por e-mail' });
+    });
+  } catch (error) {
+    console.error('Erro ao enviar NF PDF:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao enviar NF em PDF',
       detalhes: error.message
     });
   }
