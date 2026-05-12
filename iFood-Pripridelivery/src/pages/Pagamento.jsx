@@ -11,8 +11,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { CreditCard, QrCode, ArrowLeft } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import emailjs from 'emailjs-com';
+import { useAuth } from '../contexts/AuthContext';
 
 function Pagamento() {
   const navegacao = useNavigate();
@@ -184,41 +184,36 @@ function Pagamento() {
     }
   };
 
-  const enviarNFe = async () => {
+  const enviarNFe = async (pedidoId) => {
     try {
-      const pedidoId =
-        location.state?.pedidoId || Math.random().toString(36).substring(2, 11);
-
-      const orders = itensCarrinho.map((item) => ({
-        name: `${item.quantidade}x ${item.produto.nome} (${item.produto.restaurante?.nome || 'Restaurante'})`,
-        units: item.quantidade,
-        price: (item.produto.preco * item.quantidade).toFixed(2),
-        image_url: item.produto.imagemUrl || 'https://via.placeholder.com/64'
-      }));
-
-      const shipping = 0.0;
-      const tax = 0.0;
-
-      await emailjs.send(
-        import.meta.env.VITE_EMAILJS_SERVICE_ID_ORDER || 'service_knm7juc',
-        import.meta.env.VITE_EMAILJS_TEMPLATE_ID_ORDER || 'template_xgl1cv5',
-        {
-          title: 'Nota Fiscal do Pedido',
-          status_message: 'Pagamento Processado',
-          order_id: pedidoId,
-          orders,
-          cost_shipping: shipping.toFixed(2),
-          cost_tax: tax.toFixed(2),
-          cost_total: (total + shipping + tax).toFixed(2),
-          to_email: usuario?.email,
-          email: usuario?.email,
-          name: usuario?.displayName || 'Cliente'
+      const response = await fetch('http://localhost:3001/api/enviar-nfe-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         },
-        import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'IoyyR4GAPSffyyZi_'
-      );
+        body: JSON.stringify({
+          pedidoId,
+          email: usuario?.email,
+          nomeCliente: usuario?.displayName || 'Cliente',
+          total,
+          endereco: enderecoEntrega,
+          itens: itensCarrinho.map((item) => ({
+            nome: item.produto.nome,
+            quantidade: item.quantidade,
+            preco: item.produto.preco
+          }))
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao enviar NF em PDF');
+      }
+
+      console.log('NF PDF enviada:', data.message);
     } catch (error) {
-      console.error('Erro ao enviar e-mail (EmailJS):', error);
-      // Não bloqueia o fluxo do pedido se o e-mail falhar
+      console.error('Erro ao enviar NF PDF:', error);
     }
   };
 
@@ -291,8 +286,6 @@ function Pagamento() {
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      await enviarNFe();
-
       const pedidoId = Math.random().toString(36).substring(2, 11);
       const codigoVerificacao = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -334,6 +327,8 @@ function Pagamento() {
       } catch (error) {
         console.error('Erro ao enviar código de verificação (EmailJS):', error);
       }
+      
+      await enviarNFe(pedidoId);
 
       for (const item of itensCarrinho) {
         await deleteDoc(doc(db, 'carrinho', item.id));
@@ -345,6 +340,7 @@ function Pagamento() {
           codigoVerificacao: codigoVerificacao // Passamos também via state para facilitar
         }
       });
+ )
     } catch (erro) {
       console.error('Erro ao processar pagamento:', erro);
       setErro('Erro ao processar pagamento. Tente novamente.');

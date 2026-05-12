@@ -33,7 +33,7 @@ function ProdutosParaCarrinho() {
   const { restauranteId } = useParams();
   const navegacao = useNavigate();
   const { usuario: user } = useAuth();
-
+  
   const [produtos, setProdutos] = useState([]);
   const [restaurante, setRestaurante] = useState(null);
   const [carregando, setCarregando] = useState(true);
