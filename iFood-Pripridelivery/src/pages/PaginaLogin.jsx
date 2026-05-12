@@ -7,7 +7,8 @@ import {
   signInAnonymously
 } from 'firebase/auth';
 import emailjs from 'emailjs-com';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import Cabecalho from '../components/Cabecalho';
 import BotaoSocial from '../components/BotaoSocial';
@@ -238,6 +239,15 @@ function PaginaLogin() {
           return;
         }
         await signInAnonymously(auth);
+        const user = auth.currentUser;
+        if (user) {
+          await setDoc(doc(db, 'usuarios', user.uid), {
+            uid: user.uid,
+            email: email,
+            metodo: 'otp_email',
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
         toast.success('Login realizado com sucesso!');
         navegacao('/home', { replace: true });
       } else {
@@ -246,6 +256,15 @@ function PaginaLogin() {
         if (data.valid) {
           toast.success('Autenticação aprovada!');
           await signInAnonymously(auth);
+          const user = auth.currentUser;
+          if (user) {
+            await setDoc(doc(db, 'usuarios', user.uid), {
+              uid: user.uid,
+              telefone: numeroFormatado,
+              metodo: 'otp_telefone',
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+          }
           navegacao('/home', { replace: true });
         } else {
           setErro('Código inválido ou expirado.');

@@ -7,7 +7,9 @@ import {
   where,
   deleteDoc,
   doc,
-  addDoc
+  addDoc,
+  getDoc,
+  setDoc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { CreditCard, QrCode, ArrowLeft } from 'lucide-react';
@@ -45,6 +47,46 @@ function Pagamento() {
   });
   const [total, setTotal] = useState(0);
   const [itensCarrinho, setItensCarrinho] = useState([]);
+  const [emailUsuario, setEmailUsuario] = useState('');
+  const [mostrarModalReview, setMostrarModalReview] = useState(false);
+  const [dadosReview, setDadosReview] = useState({
+    nome: '',
+    email: '',
+    telefone: ''
+  });
+
+  useEffect(() => {
+    const buscarEmail = async () => {
+      if (usuario?.email) {
+        setEmailUsuario(usuario.email);
+        return;
+      }
+
+      if (usuario?.uid) {
+        try {
+          const docRef = doc(db, 'usuarios', usuario.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setEmailUsuario(docSnap.data().email || '');
+          }
+        } catch (error) {
+          console.error('Erro ao buscar email do Firestore:', error);
+        }
+      }
+    };
+
+    buscarEmail();
+  }, [usuario]);
+
+  useEffect(() => {
+    if (usuario) {
+      setDadosReview(prev => ({
+        ...prev,
+        nome: usuario.displayName || '',
+        email: emailUsuario || usuario.email || ''
+      }));
+    }
+  }, [usuario, emailUsuario]);
 
   useEffect(() => {
     if (!location.state?.total || !location.state?.itens) {
@@ -199,6 +241,15 @@ function Pagamento() {
       const shipping = 0.0;
       const tax = 0.0;
 
+      const toEmail = emailUsuario || usuario?.email;
+      
+      if (!toEmail) {
+        console.warn('EmailJS: Destinatário não definido. E-mail da NF-e não enviado.');
+        return;
+      }
+
+      console.log('Enviando NF-e para:', toEmail);
+
       await emailjs.send(
         import.meta.env.VITE_EMAILJS_SERVICE_ID_ORDER || 'service_knm7juc',
         import.meta.env.VITE_EMAILJS_TEMPLATE_ID_ORDER || 'template_xgl1cv5',
@@ -210,8 +261,8 @@ function Pagamento() {
           cost_shipping: shipping.toFixed(2),
           cost_tax: tax.toFixed(2),
           cost_total: (total + shipping + tax).toFixed(2),
-          to_email: usuario?.email,
-          email: usuario?.email,
+          to_email: toEmail,
+          email: toEmail,
           name: usuario?.displayName || 'Cliente'
         },
         import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'IoyyR4GAPSffyyZi_'
@@ -262,7 +313,7 @@ function Pagamento() {
     }
   };
 
-  const processarPagamento = async () => {
+  const abrirReview = () => {
     if (!enderecoEntrega) {
       setErro('Selecione ou cadastre um endereço de entrega');
       return;
@@ -285,16 +336,64 @@ function Pagamento() {
       }
     }
 
+    setMostrarModalReview(true);
+  };
+
+  const processarPagamento = async () => {
+    setMostrarModalReview(false);
+
     setCarregando(true);
     setErro(null);
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      await enviarNFe();
+      // Atualizar Firestore com os novos dados se necessário
+      try {
+        await setDoc(doc(db, 'usuarios', usuario.uid), {
+          nome: dadosReview.nome,
+          email: dadosReview.email,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (e) {
+        console.warn('Erro ao atualizar perfil no checkout:', e);
+      }
 
       const pedidoId = Math.random().toString(36).substring(2, 11);
       const codigoVerificacao = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Enviar e-mail da NF-e
+      try {
+        const toEmail = dadosReview.email || emailUsuario || usuario?.email;
+        
+        if (!toEmail) {
+          console.warn('EmailJS: Destinatário não definido. E-mail da NF-e não enviado.');
+        } else {
+          console.log('Enviando NF-e para:', toEmail);
+
+          await emailjs.send(
+            import.meta.env.VITE_EMAILJS_SERVICE_ID_ORDER || 'service_knm7juc',
+            import.meta.env.VITE_EMAILJS_TEMPLATE_ID_ORDER || 'template_xgl1cv5',
+            {
+              title: 'Nota Fiscal do Pedido',
+              status_message: 'Pagamento Processado',
+              order_id: pedidoId,
+              orders: itensCarrinho.map((item) => ({
+                name: `${item.quantidade}x ${item.produto.nome}`,
+                units: item.quantidade,
+                price: (item.produto.preco * item.quantidade).toFixed(2)
+              })),
+              cost_total: total.toFixed(2),
+              to_email: toEmail,
+              email: toEmail,
+              name: dadosReview.nome || 'Cliente'
+            },
+            import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'IoyyR4GAPSffyyZi_'
+          );
+        }
+      } catch (error) {
+        console.error('Erro ao enviar NF-e:', error);
+      }
 
       // Salvar pedido no Firestore para o histórico
       try {
@@ -317,20 +416,28 @@ function Pagamento() {
 
       // Enviar e-mail com o código de verificação
       try {
-        await emailjs.send(
-          import.meta.env.VITE_EMAILJS_SERVICE_ID_ORDER || 'service_knm7juc',
-          import.meta.env.VITE_EMAILJS_TEMPLATE_ID_ORDER || 'template_xgl1cv5',
-          {
-            title: 'Código de Verificação',
-            name: usuario?.displayName || 'Cliente',
-            message: codigoVerificacao,
-            time: new Date().toLocaleString(),
-            pedido_id: pedidoId,
-            to_email: usuario?.email,
-            email: usuario?.email
-          },
-          import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'IoyyR4GAPSffyyZi_'
-        );
+        const toEmail = dadosReview.email || emailUsuario || usuario?.email;
+        
+        if (!toEmail) {
+          console.warn('EmailJS: Destinatário não definido. Código de verificação não enviado.');
+        } else {
+          console.log('Enviando código de verificação para:', toEmail, 'Código:', codigoVerificacao);
+          
+          await emailjs.send(
+            import.meta.env.VITE_EMAILJS_SERVICE_ID_ORDER || 'service_knm7juc',
+            import.meta.env.VITE_EMAILJS_TEMPLATE_ID_ORDER || 'template_xgl1cv5',
+            {
+              title: 'Código de Verificação',
+              name: dadosReview.nome || 'Cliente',
+              message: codigoVerificacao,
+              time: new Date().toLocaleString(),
+              pedido_id: pedidoId,
+              to_email: toEmail,
+              email: toEmail
+            },
+            import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'IoyyR4GAPSffyyZi_'
+          );
+        }
       } catch (error) {
         console.error('Erro ao enviar código de verificação (EmailJS):', error);
       }
@@ -799,7 +906,7 @@ function Pagamento() {
                 onClick={
                   formaPagamento === 'mercadopago'
                     ? pagarComMercadoPago
-                    : processarPagamento
+                    : abrirReview
                 }
                 disabled={
                   carregando ||
@@ -811,7 +918,7 @@ function Pagamento() {
                       !dadosPagamento.validade ||
                       !dadosPagamento.cvv))
                 }
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-ifood-red hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ifood-red disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-ifood-red hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ifood-red disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
               >
                 {carregando ? 'Processando...' : 'Finalizar Pedido'}
               </button>
@@ -819,6 +926,73 @@ function Pagamento() {
           </div>
         </div>
       </main>
+
+      {/* Modal de Review de Dados */}
+      {mostrarModalReview && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in duration-300">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Confirme seus dados</h3>
+            <p className="text-gray-600 text-sm mb-6">
+              Verifique se as informações abaixo estão corretas para receber seu código de acompanhamento.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                  Seu Nome
+                </label>
+                <input
+                  type="text"
+                  value={dadosReview.nome}
+                  onChange={(e) => setDadosReview({...dadosReview, nome: e.target.value})}
+                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-ifood-red focus:ring-0 transition-colors"
+                  placeholder="Seu nome completo"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                  E-mail para Receber o Código
+                </label>
+                <input
+                  type="email"
+                  value={dadosReview.email}
+                  onChange={(e) => setDadosReview({...dadosReview, email: e.target.value})}
+                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-ifood-red focus:ring-0 transition-colors"
+                  placeholder="seu@email.com"
+                />
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mt-2">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  Endereço de Entrega
+                </label>
+                <p className="text-sm text-gray-700 font-medium leading-relaxed">
+                  {enderecoEntrega.logradouro}, {enderecoEntrega.numero}
+                  <br />
+                  {enderecoEntrega.bairro} - {enderecoEntrega.cidade}/{enderecoEntrega.estado}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-8">
+              <button
+                onClick={() => setMostrarModalReview(false)}
+                className="w-full py-3 text-gray-500 font-semibold hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={processarPagamento}
+                disabled={!dadosReview.nome || !dadosReview.email}
+                className="w-full py-3 bg-ifood-red text-white font-bold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 shadow-md shadow-red-100"
+              >
+                Confirmar e Pagar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
