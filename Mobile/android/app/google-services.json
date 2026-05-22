@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "618272619464",
+    "project_id": "priprideli",
+    "storage_bucket": "priprideli.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:618272619464:android:1bb0490eaf6240bd98defd",
+        "android_client_info": {
+          "package_name": "com.pripridelivery"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "618272619464-mahl9qo2vdau3h1174s14ke9nqc1qqil.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrYJZiIAPjFrWLSaYLOWW3WnT--fx2yL4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "618272619464-mahl9qo2vdau3h1174s14ke9nqc1qqil.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
