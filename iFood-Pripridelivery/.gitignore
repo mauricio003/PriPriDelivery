@@ -34,3 +34,4 @@ node_modules/
 serviceAccountKey.json
 *-firebase-adminsdk-*.json
 
+.DS_Store
