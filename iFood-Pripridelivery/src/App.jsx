@@ -11,8 +11,10 @@ import Pagamento from './pages/Pagamento';
 import AcompanhamentoPedido from './pages/AcompanhamentoPedido';
 import Home from './pages/Home';
 import MeusPedidos from './pages/MeusPedidos';
+import Recomendacoes from './pages/Recomendacoes';
 import { ProvedorAutenticacao } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
+import PriChat from './components/PriChat';
 
 function RotaProtegida({ children }) {
   const { estaAutenticado, carregando } = useAuth();
@@ -106,8 +108,17 @@ function App() {
               </RotaProtegida>
             }
           />
+          <Route
+            path="/recomendacoes"
+            element={
+              <RotaProtegida>
+                <Recomendacoes />
+              </RotaProtegida>
+            }
+          />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        <PriChat />
       </BrowserRouter>
     </ProvedorAutenticacao>
   );

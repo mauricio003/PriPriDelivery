@@ -30,3 +30,7 @@ node_modules/
 .env.*
 !.env.example
 
+# Firebase Service Account Keys
+serviceAccountKey.json
+*-firebase-adminsdk-*.json
+
