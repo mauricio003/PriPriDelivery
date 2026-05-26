@@ -6,7 +6,8 @@ import {
   query,
   where,
   deleteDoc,
-  doc
+  doc,
+  addDoc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { CreditCard, QrCode, ArrowLeft } from 'lucide-react';
@@ -71,16 +72,13 @@ function Pagamento() {
     }
   };
 
-  const enviarNFe = async () => {
-    const pedidoId =
-      location.state?.pedidoId || Math.random().toString(36).substring(2, 11);
-
-const orders = itensCarrinho.map((item) => ({
-  name: `${item.quantidade}x ${item.produto.nome} (${item.produto.restaurante?.nome || 'Restaurante'})`,
-  units: item.quantidade,
-  price: (item.produto.preco * item.quantidade).toFixed(2),
-  image_url: item.produto.imagemUrl || 'https://via.placeholder.com/64'
-}));
+  const enviarNFe = async (pedidoId) => {
+    const orders = itensCarrinho.map((item) => ({
+      name: `${item.quantidade}x ${item.produto.nome} (${item.produto.restaurante?.nome || 'Restaurante'})`,
+      units: item.quantidade,
+      price: (item.produto.preco * item.quantidade).toFixed(2),
+      image_url: item.produto.imagemUrl || 'https://via.placeholder.com/64'
+    }));
 
     const shipping = 0.0;
     const tax = 0.0;
@@ -125,7 +123,32 @@ const orders = itensCarrinho.map((item) => ({
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      await enviarNFe();
+      const pedidoId = location.state?.pedidoId || Math.random().toString(36).substring(2, 11);
+      const codigoVerificacao = Math.floor(1000 + Math.random() * 9000).toString();
+
+      // Salvar pedido no Firestore para o histórico
+      const primeiroItem = itensCarrinho[0];
+      const restauranteId = primeiroItem?.produto?.restauranteId || primeiroItem?.produto?.restaurante_id || '';
+      const restauranteNome = primeiroItem?.produto?.restaurante?.nome || 'Restaurante';
+
+      await addDoc(collection(db, 'pedidos'), {
+        user_id: usuario.uid,
+        pedidoId: pedidoId,
+        codigoVerificacao: codigoVerificacao,
+        total: total,
+        itens: itensCarrinho.map(item => ({
+          nome: item.produto.nome,
+          quantidade: item.quantidade,
+          preco: item.produto.preco
+        })),
+        status: 'O restaurante aceitou o pedido',
+        createdAt: new Date().toISOString(),
+        restaurante_id: restauranteId,
+        restaurante_nome: restauranteNome,
+        forma_pagamento: formaPagamento // 'cartao', 'pix', etc.
+      });
+
+      await enviarNFe(pedidoId);
 
       for (const item of itensCarrinho) {
         await deleteDoc(doc(db, 'carrinho', item.id));
@@ -133,7 +156,7 @@ const orders = itensCarrinho.map((item) => ({
 
       navegacao('/acompanhamento', {
         state: {
-          pedidoId: Math.random().toString(36).substring(2, 11)
+          pedidoId: pedidoId
         }
       });
     } catch (erro) {

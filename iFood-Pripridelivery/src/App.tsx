@@ -9,6 +9,7 @@ import ProdutosParaCarrinho from './pages/ProdutosParaCarrinho';
 import Pagamento from './pages/Pagamento';
 import AcompanhamentoPedido from './pages/AcompanhamentoPedido';
 import Home from './pages/Home';
+import Relatorios from './pages/Relatorios';
 import { ProvedorAutenticacao } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 
@@ -39,6 +40,14 @@ function App() {
             element={
               <RotaProtegida>
                 <Home />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/relatorios"
+            element={
+              <RotaProtegida>
+                <Relatorios />
               </RotaProtegida>
             }
           />

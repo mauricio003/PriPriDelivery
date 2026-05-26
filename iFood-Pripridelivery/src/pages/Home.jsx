@@ -11,7 +11,7 @@ import {
   deleteDoc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Search, MapPin, LogOut, Store, ShoppingCart } from 'lucide-react';
+import { Search, MapPin, LogOut, Store, ShoppingCart, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import CarrinhoModal from '../components/CarrinhoModal';
 
@@ -237,6 +237,14 @@ function Home() {
               >
                 <Store className="w-5 h-5 mr-2" />
                 <span>Meus Restaurantes</span>
+              </button>
+
+              <button
+                onClick={() => navegacao('/relatorios')}
+                className="flex items-center text-gray-600 hover:text-gray-900"
+              >
+                <TrendingUp className="w-5 h-5 mr-2" />
+                <span>Relatórios</span>
               </button>
 
               <button

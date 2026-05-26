@@ -51,8 +51,14 @@ function CarrinhoModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
+    <div
+      className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50"
+      onClick={fechar}
+    >
+      <div
+        className="bg-white rounded-lg max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-900 flex items-center">
             <ShoppingCart className="w-5 h-5 mr-2" />
@@ -61,6 +67,7 @@ function CarrinhoModal({
           <button
             onClick={fechar}
             className="text-gray-400 hover:text-gray-500"
+            aria-label="Fechar carrinho"
           >
             <X className="w-5 h-5" />
           </button>
