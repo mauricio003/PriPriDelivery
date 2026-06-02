@@ -171,50 +171,7 @@ function Relatorios() {
 
   return (
     <DashboardLayout>
-  <TopBar />
-  {carregando ? (
-    <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-      <div className="text-center">
-        <Loader2 className="w-10 h-10 animate-spin text-red-600 mx-auto mb-4" />
-        <p className="text-gray-500">Processando e gerando relatórios...</p>
-      </div>
-    </div>
-  ) : (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Navbar */}
-      <nav className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <button
-                onClick={() => navegacao('/home')}
-                className="mr-4 flex items-center text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                <TrendingUp className="w-6 h-6 mr-2 text-red-600" />
-                Painel de Relatórios
-              </h1>
-            </div>
-            
-            {/* Seletor de Período */}
-            <div className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <select
-                value={filtroDias}
-                onChange={(e) => setFiltroDias(e.target.value)}
-                className="text-sm border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500 bg-white"
-              >
-                <option value="7">Últimos 7 dias</option>
-                <option value="30">Últimos 30 dias</option>
-                <option value="total">Todo o período</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </nav>
-
+      <TopBar />
       {carregando ? (
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
           <div className="text-center">
@@ -224,6 +181,39 @@ function Relatorios() {
         </div>
       ) : (
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Navbar */}
+          <nav className="bg-white shadow-sm sticky top-0 z-10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between h-16">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => navegacao('/home')}
+                    className="mr-4 flex items-center text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <h1 className="text-xl font-bold text-gray-900 flex items-center">
+                    <TrendingUp className="w-6 h-6 mr-2 text-red-600" />
+                    Painel de Relatórios
+                  </h1>
+                </div>
+                
+                {/* Seletor de Período */}
+                <div className="flex items-center space-x-2">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  <select
+                    value={filtroDias}
+                    onChange={(e) => setFiltroDias(e.target.value)}
+                    className="text-sm border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500 bg-white"
+                  >
+                    <option value="7">Últimos 7 dias</option>
+                    <option value="30">Últimos 30 dias</option>
+                    <option value="total">Todo o período</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </nav>
           
           {/* Métricas Principais (Cards) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -449,7 +439,7 @@ function Relatorios() {
           </div>
         </main>
       )}
-    </div>
+    </DashboardLayout>
   );
 }
 
