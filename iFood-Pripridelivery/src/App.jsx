@@ -12,6 +12,7 @@ import AcompanhamentoPedido from './pages/AcompanhamentoPedido';
 import Home from './pages/Home';
 import MeusPedidos from './pages/MeusPedidos';
 import Recomendacoes from './pages/Recomendacoes';
+import Relatorios from './pages/Relatorios';
 import { ProvedorAutenticacao } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import PriChat from './components/PriChat';
@@ -49,6 +50,14 @@ function App() {
             element={
               <RotaProtegida>
                 <Home />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/relatorios"
+            element={
+              <RotaProtegida>
+                <Relatorios />
               </RotaProtegida>
             }
           />

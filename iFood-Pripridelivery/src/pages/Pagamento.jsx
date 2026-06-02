@@ -102,69 +102,67 @@ function Pagamento() {
     }
   }, [location.state, usuario]);
 
-    const carregarEnderecoEntrega = async () => {
-      try {
-        if (!usuario?.uid) return;
+  const carregarEnderecoEntrega = async () => {
+    try {
+      if (!usuario?.uid) return;
 
-        const q = query(
-          collection(db, 'enderecos'),
-          where('user_id', '==', usuario.uid)
-        );    
+      const q = query(
+        collection(db, 'enderecos'),
+        where('user_id', '==', usuario.uid)
+      );
 
-        const snapshot = await getDocs(q);
+      const snapshot = await getDocs(q);
 
-        const lista = snapshot.docs.map((item) => ({
-          id: item.id,
-          ...item.data()
-        }));
+      const lista = snapshot.docs.map((item) => ({
+        id: item.id,
+        ...item.data()
+      }));
 
-        setEnderecos(lista);
+      setEnderecos(lista);
 
-        if (lista.length === 0) {
-          setEnderecoEntrega(null);
-          return;
-        }
-
-        const principal = lista.find((endereco) => endereco.principal === true);
-
-        setEnderecoEntrega(principal || lista[0]);
-      } catch (erro) {
-        console.error('Erro ao carregar endereço:', erro);
-        setErro('Erro ao carregar endereço de entrega');
+      if (lista.length === 0) {
+        setEnderecoEntrega(null);
+        return;
       }
-    };  
 
-        const salvarNovoEndereco = async (e) => {
-          e.preventDefault();
+      const principal = lista.find((endereco) => endereco.principal === true);
+      setEnderecoEntrega(principal || lista[0]);
+    } catch (erro) {
+      console.error('Erro ao carregar endereço:', erro);
+      setErro('Erro ao carregar endereço de entrega');
+    }
+  };
 
-          try {
-            if (!usuario?.uid) return;
+  const salvarNovoEndereco = async (e) => {
+    e.preventDefault();
 
-            const dados = {
-              ...novoEndereco,
-              user_id: usuario.uid
-            };      
+    try {
+      if (!usuario?.uid) return;
 
-            await addDoc(collection(db, 'enderecos'), dados);
+      const dados = {
+        ...novoEndereco,
+        user_id: usuario.uid
+      };
 
-            setNovoEndereco({
-              cep: '',
-              logradouro: '',
-              numero: '',
-              complemento: '',
-              bairro: '',
-              cidade: '',
-              estado: '',
-              principal: false
-            });
+      await addDoc(collection(db, 'enderecos'), dados);
 
-            setMostrarNovoEndereco(false);
+      setNovoEndereco({
+        cep: '',
+        logradouro: '',
+        numero: '',
+        complemento: '',
+        bairro: '',
+        cidade: '',
+        estado: '',
+        principal: false
+      });
 
-            await carregarEnderecoEntrega();
-          } catch (erro) {
-            setErro('Erro ao salvar novo endereço');
-          }
-        };
+      setMostrarNovoEndereco(false);
+      await carregarEnderecoEntrega();
+    } catch (erro) {
+      setErro('Erro ao salvar novo endereço');
+    }
+  };
 
   const buscarCep = async (cep) => {
     try {
@@ -194,9 +192,14 @@ function Pagamento() {
     }
   };
 
-  const buscarSugestoesEndereco = async (texto) => {
+  const buscarSugestoesEndereco = (texto) => {
     try {
-      if (!window.google || !texto || texto.length < 3) {
+      if (!texto || texto.length < 3) {
+        setSugestoesEndereco([]);
+        return;
+      }
+
+      if (!window.google?.maps?.places) {
         setSugestoesEndereco([]);
         return;
       }
@@ -229,13 +232,12 @@ function Pagamento() {
   const enviarNFe = async (pedidoId) => {
     try {
       const toEmail = dadosReview.email || emailUsuario || usuario?.email;
-      
+
       if (!toEmail) {
         console.warn('EmailJS: Destinatário não definido. E-mail da NF-e não enviado.');
       } else {
         console.log('Enviando NF-e para:', toEmail);
 
-        // Tentativa de enviar via EmailJS (sua configuração anterior)
         try {
           await emailjs.send(
             import.meta.env.VITE_EMAILJS_SERVICE_ID_ORDER || 'service_knm7juc',
@@ -261,29 +263,31 @@ function Pagamento() {
         }
       }
 
-      // Além do EmailJS, tentamos o novo serviço de PDF do backend (mudança remota)
-      const response = await fetch('http://localhost:3001/api/enviar-nfe-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          pedidoId,
-          email: dadosReview.email || usuario?.email,
-          nomeCliente: dadosReview.nome || usuario?.displayName || 'Cliente',
-          total,
-          endereco: enderecoEntrega,
-          itens: itensCarrinho.map((item) => ({
-            nome: item.produto.nome,
-            quantidade: item.quantidade,
-            preco: item.produto.preco
-          }))
-        })
-      });
+      // Tentativa de enviar PDF pelo backend
+      try {
+        const response = await fetch('http://localhost:3001/api/enviar-nfe-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pedidoId,
+            email: dadosReview.email || usuario?.email,
+            nomeCliente: dadosReview.nome || usuario?.displayName || 'Cliente',
+            total,
+            endereco: enderecoEntrega,
+            itens: itensCarrinho.map((item) => ({
+              nome: item.produto.nome,
+              quantidade: item.quantidade,
+              preco: item.produto.preco
+            }))
+          })
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('NF PDF enviada:', data.message);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('NF PDF enviada:', data.message);
+        }
+      } catch (err) {
+        console.warn('Backend de NF-e PDF indisponível:', err.message);
       }
     } catch (error) {
       console.error('Erro ao processar envio de NF:', error);
@@ -302,9 +306,7 @@ function Pagamento() {
     try {
       const response = await fetch('http://localhost:3001/criar-preferencia', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           itens: itensCarrinho.map((item) => ({
             nome: item.produto.nome,
@@ -334,7 +336,7 @@ function Pagamento() {
     if (!enderecoEntrega) {
       setErro('Selecione ou cadastre um endereço de entrega');
       return;
-    }  
+    }
 
     if (!formaPagamento) {
       setErro('Selecione uma forma de pagamento');
@@ -358,14 +360,13 @@ function Pagamento() {
 
   const processarPagamento = async () => {
     setMostrarModalReview(false);
-
     setCarregando(true);
     setErro(null);
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Atualizar Firestore com os novos dados se necessário (Fix para e-mail ausente)
+      // Atualizar perfil do usuário
       try {
         await setDoc(doc(db, 'usuarios', usuario.uid), {
           nome: dadosReview.nome,
@@ -375,43 +376,15 @@ function Pagamento() {
       } catch (e) {
         console.warn('Erro ao atualizar perfil no checkout:', e);
       }
+
       const pedidoId = Math.random().toString(36).substring(2, 11);
       const codigoVerificacao = Math.floor(100000 + Math.random() * 900000).toString();
 
-      // Enviar e-mail da NF-e
-      try {
-        const toEmail = dadosReview.email || emailUsuario || usuario?.email;
-        
-        if (!toEmail) {
-          console.warn('EmailJS: Destinatário não definido. E-mail da NF-e não enviado.');
-        } else {
-          console.log('Enviando NF-e para:', toEmail);
+      // Salvar pedido no Firestore (com dados para relatórios)
+      const primeiroItem = itensCarrinho[0];
+      const restauranteId = primeiroItem?.produto?.restauranteId || primeiroItem?.produto?.restaurante_id || '';
+      const restauranteNome = primeiroItem?.produto?.restaurante?.nome || 'Restaurante';
 
-          await emailjs.send(
-            import.meta.env.VITE_EMAILJS_SERVICE_ID_ORDER || 'service_knm7juc',
-            import.meta.env.VITE_EMAILJS_TEMPLATE_ID_ORDER || 'template_xgl1cv5',
-            {
-              title: 'Nota Fiscal do Pedido',
-              status_message: 'Pagamento Processado',
-              order_id: pedidoId,
-              orders: itensCarrinho.map((item) => ({
-                name: `${item.quantidade}x ${item.produto.nome}`,
-                units: item.quantidade,
-                price: (item.produto.preco * item.quantidade).toFixed(2)
-              })),
-              cost_total: total.toFixed(2),
-              to_email: toEmail,
-              email: toEmail,
-              name: dadosReview.nome || 'Cliente'
-            },
-            import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'IoyyR4GAPSffyyZi_'
-          );
-        }
-      } catch (error) {
-        console.error('Erro ao enviar NF-e:', error);
-      }
-
-      // Salvar pedido no Firestore para o histórico
       try {
         await addDoc(collection(db, 'pedidos'), {
           user_id: usuario.uid,
@@ -424,21 +397,27 @@ function Pagamento() {
             preco: item.produto.preco
           })),
           status: 'O restaurante aceitou o pedido',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          restaurante_id: restauranteId,
+          restaurante_nome: restauranteNome,
+          forma_pagamento: formaPagamento
         });
       } catch (error) {
-        console.warn('Nota: Pedido não salvo no histórico devido às regras do Firebase:', error);
+        console.warn('Nota: Pedido não salvo no histórico:', error);
       }
 
-      // Enviar e-mail com o código de verificação
+      // Enviar NF-e por e-mail
+      await enviarNFe(pedidoId);
+
+      // Enviar código de verificação por e-mail
       try {
         const toEmail = dadosReview.email || emailUsuario || usuario?.email;
-        
+
         if (!toEmail) {
           console.warn('EmailJS: Destinatário não definido. Código de verificação não enviado.');
         } else {
           console.log('Enviando código de verificação para:', toEmail, 'Código:', codigoVerificacao);
-          
+
           await emailjs.send(
             import.meta.env.VITE_EMAILJS_SERVICE_ID_ORDER || 'service_knm7juc',
             import.meta.env.VITE_EMAILJS_TEMPLATE_ID_ORDER || 'template_xgl1cv5',
@@ -457,9 +436,8 @@ function Pagamento() {
       } catch (error) {
         console.error('Erro ao enviar código de verificação (EmailJS):', error);
       }
-      
-      await enviarNFe(pedidoId);
 
+      // Limpar carrinho
       for (const item of itensCarrinho) {
         await deleteDoc(doc(db, 'carrinho', item.id));
       }
@@ -467,7 +445,7 @@ function Pagamento() {
       navegacao('/acompanhamento', {
         state: {
           pedidoId: pedidoId,
-          codigoVerificacao: codigoVerificacao // Passamos também via state para facilitar
+          codigoVerificacao: codigoVerificacao
         }
       });
     } catch (erro) {
@@ -545,245 +523,244 @@ function Pagamento() {
           </div>
 
           <div className="p-6 border-b border-gray-200">
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Tipo de Entrega
+              </h2>
 
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Tipo de Entrega
-            </h2>
-
-            <div className="flex gap-4">
-              <button
-                onClick={() => setTipoEntrega("entrega")}
-                className={`flex-1 py-3 rounded-lg border ${
-                  tipoEntrega === "entrega"
-                    ? "border-ifood-red bg-red-50 text-ifood-red"
-                    : "border-gray-300"
-                }`}
-              >
-                Entrega
-              </button>
-
-              <button
-                onClick={() => setTipoEntrega("retirada")}
-                className={`flex-1 py-3 rounded-lg border ${
-                  tipoEntrega === "retirada"
-                    ? "border-ifood-red bg-red-50 text-ifood-red"
-                    : "border-gray-300"
-                }`}
-              >
-                Retirada no local
-              </button>
-            </div>
-          </div>
-
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Endereço de Entrega
-          </h2>
-
-          <div className="space-y-3">
-            {enderecos.length > 0 ? (
-              enderecos.map((endereco) => (
-                <label
-                  key={endereco.id}
-                  className={`block border rounded-lg p-4 cursor-pointer transition ${
-                    enderecoEntrega?.id === endereco.id
-                      ? 'border-ifood-red bg-red-50'
-                      : 'border-gray-300 hover:border-gray-400'
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setTipoEntrega("entrega")}
+                  className={`flex-1 py-3 rounded-lg border ${
+                    tipoEntrega === "entrega"
+                      ? "border-ifood-red bg-red-50 text-ifood-red"
+                      : "border-gray-300"
                   }`}
                 >
-                  <div className="flex items-start">
+                  Entrega
+                </button>
+
+                <button
+                  onClick={() => setTipoEntrega("retirada")}
+                  className={`flex-1 py-3 rounded-lg border ${
+                    tipoEntrega === "retirada"
+                      ? "border-ifood-red bg-red-50 text-ifood-red"
+                      : "border-gray-300"
+                  }`}
+                >
+                  Retirada no local
+                </button>
+              </div>
+            </div>
+
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Endereço de Entrega
+            </h2>
+
+            <div className="space-y-3">
+              {enderecos.length > 0 ? (
+                enderecos.map((endereco) => (
+                  <label
+                    key={endereco.id}
+                    className={`block border rounded-lg p-4 cursor-pointer transition ${
+                      enderecoEntrega?.id === endereco.id
+                        ? 'border-ifood-red bg-red-50'
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    <div className="flex items-start">
+                      <input
+                        type="radio"
+                        name="enderecoEntrega"
+                        checked={enderecoEntrega?.id === endereco.id}
+                        onChange={() => setEnderecoEntrega(endereco)}
+                        className="mt-1 mr-3"
+                      />
+
+                      <div>
+                        <p className="text-gray-900 font-medium">
+                          {endereco.logradouro}, {endereco.numero}
+                        </p>
+
+                        {endereco.complemento && (
+                          <p className="text-gray-700">{endereco.complemento}</p>
+                        )}
+
+                        <p className="text-gray-700">
+                          {endereco.bairro}, {endereco.cidade} - {endereco.estado}
+                        </p>
+
+                        <p className="text-gray-700">CEP: {endereco.cep}</p>
+
+                        {endereco.principal && (
+                          <span className="inline-block mt-2 text-xs px-2 py-1 rounded bg-green-100 text-green-700">
+                            Principal
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </label>
+                ))
+              ) : (
+                <p className="text-gray-500">Nenhum endereço cadastrado</p>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setMostrarNovoEndereco(!mostrarNovoEndereco)}
+                className="text-ifood-red font-medium hover:text-red-700"
+              >
+                {mostrarNovoEndereco ? 'Cancelar' : '+ Cadastrar novo endereço'}
+              </button>
+
+              {mostrarNovoEndereco && (
+                <form onSubmit={salvarNovoEndereco} className="mt-4 space-y-4 border rounded-lg p-4 bg-gray-50">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">CEP</label>
                     <input
-                      type="radio"
-                      name="enderecoEntrega"
-                      checked={enderecoEntrega?.id === endereco.id}
-                      onChange={() => setEnderecoEntrega(endereco)}
-                      className="mt-1 mr-3"
+                      type="text"
+                      value={novoEndereco.cep}
+                      onChange={(e) =>
+                        setNovoEndereco({ ...novoEndereco, cep: e.target.value })
+                      }
+                      onBlur={(e) => buscarCep(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                      required
                     />
+                  </div>
 
-                    <div>
-                      <p className="text-gray-900 font-medium">
-                        {endereco.logradouro}, {endereco.numero}
-                      </p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Logradouro</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={novoEndereco.logradouro}
+                        onChange={(e) => {
+                          const valor = e.target.value;
+                          setNovoEndereco({ ...novoEndereco, logradouro: valor });
+                          buscarSugestoesEndereco(valor);
+                        }}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                        required
+                      />
 
-                      {endereco.complemento && (
-                        <p className="text-gray-700">{endereco.complemento}</p>
-                      )}
-
-                      <p className="text-gray-700">
-                        {endereco.bairro}, {endereco.cidade} - {endereco.estado}
-                      </p>
-
-                      <p className="text-gray-700">CEP: {endereco.cep}</p>
-
-                      {endereco.principal && (
-                        <span className="inline-block mt-2 text-xs px-2 py-1 rounded bg-green-100 text-green-700">
-                          Principal
-                        </span>
+                      {sugestoesEndereco.length > 0 && (
+                        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                          {sugestoesEndereco.map((sugestao) => (
+                            <button
+                              key={sugestao.place_id}
+                              type="button"
+                              onClick={() => {
+                                setNovoEndereco({
+                                  ...novoEndereco,
+                                  logradouro: sugestao.description
+                                });
+                                setSugestoesEndereco([]);
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
+                            >
+                              {sugestao.description}
+                            </button>
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>
-                </label>
-              ))
-            ) : (
-              <p className="text-gray-500">Nenhum endereço cadastrado</p>
-            )}
 
-            <button
-              type="button"
-              onClick={() => setMostrarNovoEndereco(!mostrarNovoEndereco)}
-              className="text-ifood-red font-medium hover:text-red-700"
-            >
-              {mostrarNovoEndereco ? 'Cancelar' : '+ Cadastrar novo endereço'}
-            </button>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Número</label>
+                      <input
+                        type="text"
+                        value={novoEndereco.numero}
+                        onChange={(e) =>
+                          setNovoEndereco({ ...novoEndereco, numero: e.target.value })
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                        required
+                      />
+                    </div>
 
-            {mostrarNovoEndereco && (
-              <form onSubmit={salvarNovoEndereco} className="mt-4 space-y-4 border rounded-lg p-4 bg-gray-50">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">CEP</label>
-                <input
-                  type="text"
-                  value={novoEndereco.cep}
-                  onChange={(e) =>
-                    setNovoEndereco({ ...novoEndereco, cep: e.target.value })
-                  }
-                  onBlur={(e) => buscarCep(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
-                  required
-                />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Logradouro</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={novoEndereco.logradouro}
-                      onChange={(e) => {
-                        const valor = e.target.value;
-                        setNovoEndereco({ ...novoEndereco, logradouro: valor });
-                        buscarSugestoesEndereco(valor);
-                      }}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
-                      required
-                    />
-
-                    {sugestoesEndereco.length > 0 && (
-                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                        {sugestoesEndereco.map((sugestao) => (
-                          <button
-                            key={sugestao.place_id}
-                            type="button"
-                            onClick={() => {
-                              setNovoEndereco({
-                                ...novoEndereco,
-                                logradouro: sugestao.description
-                              });
-                              setSugestoesEndereco([]);
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
-                          >
-                            {sugestao.description}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Complemento</label>
+                      <input
+                        type="text"
+                        value={novoEndereco.complemento}
+                        onChange={(e) =>
+                          setNovoEndereco({ ...novoEndereco, complemento: e.target.value })
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Número</label>
+                    <label className="block text-sm font-medium text-gray-700">Bairro</label>
                     <input
                       type="text"
-                      value={novoEndereco.numero}
+                      value={novoEndereco.bairro}
                       onChange={(e) =>
-                        setNovoEndereco({ ...novoEndereco, numero: e.target.value })
+                        setNovoEndereco({ ...novoEndereco, bairro: e.target.value })
                       }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
                       required
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Complemento</label>
-                    <input
-                      type="text"
-                      value={novoEndereco.complemento}
-                      onChange={(e) =>
-                        setNovoEndereco({ ...novoEndereco, complemento: e.target.value })
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Cidade</label>
+                      <input
+                        type="text"
+                        value={novoEndereco.cidade}
+                        onChange={(e) =>
+                          setNovoEndereco({ ...novoEndereco, cidade: e.target.value })
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Estado</label>
+                      <input
+                        type="text"
+                        value={novoEndereco.estado}
+                        onChange={(e) =>
+                          setNovoEndereco({ ...novoEndereco, estado: e.target.value })
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
+                        required
+                      />
+                    </div>
                   </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Bairro</label>
-                  <input
-                    type="text"
-                    value={novoEndereco.bairro}
-                    onChange={(e) =>
-                      setNovoEndereco({ ...novoEndereco, bairro: e.target.value })
-                    }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
-                    required
-                  />
-                </div>
-
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Cidade</label>
+                  <div className="flex items-center">
                     <input
-                      type="text"
-                      value={novoEndereco.cidade}
+                      id="principal"
+                      type="checkbox"
+                      checked={novoEndereco.principal}
                       onChange={(e) =>
-                        setNovoEndereco({ ...novoEndereco, cidade: e.target.value })
+                        setNovoEndereco({ ...novoEndereco, principal: e.target.checked })
                       }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
-                      required
+                      className="mr-2"
                     />
+                    <label htmlFor="principal" className="text-sm text-gray-700">
+                      Definir como endereço principal
+                    </label>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Estado</label>
-                    <input
-                      type="text"
-                      value={novoEndereco.estado}
-                      onChange={(e) =>
-                        setNovoEndereco({ ...novoEndereco, estado: e.target.value })
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    id="principal"
-                    type="checkbox"
-                    checked={novoEndereco.principal}
-                    onChange={(e) =>
-                      setNovoEndereco({ ...novoEndereco, principal: e.target.checked })
-                    }
-                    className="mr-2"
-                  />
-                  <label htmlFor="principal" className="text-sm text-gray-700">
-                    Definir como endereço principal
-                  </label>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2 px-4 rounded-md text-white bg-ifood-red hover:bg-red-700"
-                >
-                  Salvar novo endereço
-                </button>
-              </form>
-            )}
+                  <button
+                    type="submit"
+                    className="w-full py-2 px-4 rounded-md text-white bg-ifood-red hover:bg-red-700"
+                  >
+                    Salvar novo endereço
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
-        </div>
+
           <div className="p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Forma de Pagamento
@@ -819,7 +796,7 @@ function Pagamento() {
                 <QrCode className="w-6 h-6 mr-2" />
                 <span>PIX</span>
               </button>
-              
+
               <button
                 onClick={() => setFormaPagamento('mercadopago')}
                 className={`flex items-center justify-center p-4 rounded-lg border ${
@@ -831,7 +808,7 @@ function Pagamento() {
                 <CreditCard className="w-6 h-6 mr-2" />
                 <span>Mercado Pago</span>
               </button>
-           </div>
+            </div>
 
             {formaPagamento === 'cartao' && (
               <div className="space-y-4">
@@ -843,10 +820,7 @@ function Pagamento() {
                     type="text"
                     value={dadosPagamento.numero}
                     onChange={(e) =>
-                      setDadosPagamento({
-                        ...dadosPagamento,
-                        numero: e.target.value
-                      })
+                      setDadosPagamento({ ...dadosPagamento, numero: e.target.value })
                     }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
                   />
@@ -860,10 +834,7 @@ function Pagamento() {
                     type="text"
                     value={dadosPagamento.nome}
                     onChange={(e) =>
-                      setDadosPagamento({
-                        ...dadosPagamento,
-                        nome: e.target.value
-                      })
+                      setDadosPagamento({ ...dadosPagamento, nome: e.target.value })
                     }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
                   />
@@ -878,10 +849,7 @@ function Pagamento() {
                       type="text"
                       value={dadosPagamento.validade}
                       onChange={(e) =>
-                        setDadosPagamento({
-                          ...dadosPagamento,
-                          validade: e.target.value
-                        })
+                        setDadosPagamento({ ...dadosPagamento, validade: e.target.value })
                       }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
                     />
@@ -895,10 +863,7 @@ function Pagamento() {
                       type="text"
                       value={dadosPagamento.cvv}
                       onChange={(e) =>
-                        setDadosPagamento({
-                          ...dadosPagamento,
-                          cvv: e.target.value
-                        })
+                        setDadosPagamento({ ...dadosPagamento, cvv: e.target.value })
                       }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ifood-red focus:ring-ifood-red sm:text-sm"
                     />
@@ -948,7 +913,7 @@ function Pagamento() {
       {/* Modal de Review de Dados */}
       {mostrarModalReview && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-2">Confirme seus dados</h3>
             <p className="text-gray-600 text-sm mb-6">
               Verifique se as informações abaixo estão corretas para receber seu código de acompanhamento.
@@ -981,16 +946,18 @@ function Pagamento() {
                 />
               </div>
 
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mt-2">
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  Endereço de Entrega
-                </label>
-                <p className="text-sm text-gray-700 font-medium leading-relaxed">
-                  {enderecoEntrega.logradouro}, {enderecoEntrega.numero}
-                  <br />
-                  {enderecoEntrega.bairro} - {enderecoEntrega.cidade}/{enderecoEntrega.estado}
-                </p>
-              </div>
+              {enderecoEntrega && (
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mt-2">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    Endereço de Entrega
+                  </label>
+                  <p className="text-sm text-gray-700 font-medium leading-relaxed">
+                    {enderecoEntrega.logradouro}, {enderecoEntrega.numero}
+                    <br />
+                    {enderecoEntrega.bairro} - {enderecoEntrega.cidade}/{enderecoEntrega.estado}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3 mt-8">
